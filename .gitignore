@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+
+# Raw Affirm filings (regenerate via fetch_affirm_filings.py)
+data/raw/affirm/*/
+!data/raw/affirm/affirm_filings_index.csv
+
+# System
+.DS_Store
+Thumbs.db
