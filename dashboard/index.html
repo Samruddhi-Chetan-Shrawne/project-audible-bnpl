@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Audible Dashboard</title>
+<script src="vendor/plotly-2.35.2.min.js"></script>
+<script src="data.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f6f7f9;
+    --surface: #ffffff;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #7a7974;
+    --grid: #e6e5df;
+    --axis: #c3c2b7;
+    --border: rgba(1, 33, 105, 0.12);
+    --duke: #012169;        /* Duke navy: chrome, emphasis */
+    --duke-2: #00539b;      /* Duke royal blue: links */
+    --duke-tint: #eef2f9;
+    --cards: #2a78d6;       /* series 1: bank credit cards */
+    --affirm: #eb6834;      /* series 2: Affirm (BNPL) */
+    --nco: #1baf7a;         /* series 3: card charge-offs */
+    --bar-idle: #c9cbd3;
+    --good: #0ca30c;  --warning: #fab219;  --critical: #d03b3b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+  a { color: var(--duke-2); }
+  button { font: inherit; }
+
+  /* Header + page tabs */
+  .top { background: var(--duke); color: #fff; }
+  .top .inner { max-width: 1320px; margin: 0 auto; padding: 14px 24px 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .brand .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; opacity: .75; }
+  .brand .name { font-size: 20px; font-weight: 650; letter-spacing: -.01em; margin: 2px 0 12px; }
+  .vintage { font-size: 12px; opacity: .8; margin-bottom: 12px; text-align: right; }
+  .tabs { display: flex; gap: 2px; max-width: 1320px; margin: 0 auto; padding: 0 24px; overflow-x: auto; }
+  .tabs a { color: #fff; text-decoration: none; padding: 9px 18px 10px; border-radius: 8px 8px 0 0; font-size: 14px; opacity: .8; display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+  .tabs a small { font-size: 11px; opacity: .8; }
+  .tabs a:hover { opacity: 1; background: rgba(255,255,255,.08); }
+  .tabs a[aria-current=page] { background: var(--page); color: var(--duke); opacity: 1; font-weight: 600; }
+
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 20px 24px 36px; }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+  .s12 { grid-column: span 12; } .s8 { grid-column: span 8; } .s7 { grid-column: span 7; } .s6 { grid-column: span 6; }
+  .s5 { grid-column: span 5; } .s4 { grid-column: span 4; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+  .panel h2 { font-size: 17px; line-height: 1.3; margin: 0 0 4px; }
+  .panel .desc { color: var(--ink-2); font-size: 13px; margin: 0 0 8px; }
+  .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--duke); font-weight: 650; margin: 0 0 6px; }
+  .page-intro { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .page-intro h1 { font-size: 24px; margin: 0; letter-spacing: -.01em; }
+  .page-intro p { margin: 0; color: var(--ink-2); font-size: 14px; }
+  .hint { color: var(--muted); font-size: 12px; }
+
+  /* Executive conclusion card */
+  .conclusion { border-left: 5px solid var(--duke); cursor: pointer; transition: box-shadow .15s; }
+  .conclusion:hover, .conclusion:focus-visible { box-shadow: 0 2px 14px rgba(1,33,105,.14); outline: none; }
+  .conclusion h2 { font-size: 21px; }
+  .big { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -.02em; color: var(--duke); font-variant-numeric: tabular-nums; margin: 12px 0 4px; }
+  .big small { font-size: 20px; font-weight: 600; color: var(--ink); letter-spacing: 0; }
+  .peaks { display: flex; gap: 6px 22px; flex-wrap: wrap; margin: 10px 0 14px; font-size: 14px; color: var(--ink-2); }
+  .peaks b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; flex: none; }
+  .signal { display: flex; gap: 12px; align-items: center; border-top: 1px solid var(--grid); padding-top: 12px; flex-wrap: wrap; }
+  .signal .txt { font-size: 14px; color: var(--ink-2); flex: 1; min-width: 200px; }
+  .signal .txt b { color: var(--ink); }
+  .status { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--axis); border-radius: 999px; padding: 2px 10px 2px 8px; font-size: 13px; font-weight: 600; white-space: nowrap; background: #fff; }
+  .status i { font-style: normal; font-size: 11px; }
+  .status.none i { color: var(--good); } .status.watch i { color: #b07800; } .status.trigger i { color: var(--critical); } .status.na i { color: var(--muted); }
+  .drill-link { margin-top: 12px; font-size: 13px; color: var(--duke-2); font-weight: 600; }
+  ol.recs { margin: 8px 0 0; padding-left: 0; list-style: none; counter-reset: r; display: grid; gap: 12px; }
+  ol.recs li { counter-increment: r; display: grid; grid-template-columns: 30px 1fr; gap: 10px; }
+  ol.recs li::before { content: counter(r); width: 26px; height: 26px; border-radius: 50%; background: var(--duke); color: #fff; font-weight: 700; font-size: 13px; display: grid; place-items: center; }
+  ol.recs b { display: block; }
+  ol.recs span { color: var(--ink-2); font-size: 14px; }
+  .trust { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; background: var(--duke-tint); }
+  .trust p { margin: 0; font-size: 15px; max-width: 820px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--duke); color: var(--duke); background: #fff; border-radius: 8px; padding: 7px 13px; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--duke); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn:not(:disabled):hover { background: var(--duke-tint); }
+  .btn.primary:hover { background: var(--duke-2); }
+
+  /* Slicer bar (analyst) */
+  .slicers { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
+  .slicer { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
+  .slicer > span:first-child { font-weight: 600; letter-spacing: .02em; }
+  select { font: inherit; font-size: 14px; padding: 5px 8px; border: 1px solid var(--axis); border-radius: 7px; background: #fff; color: var(--ink); }
+  .seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 8px; overflow: hidden; background: #fff; }
+  .seg button { border: 0; background: transparent; padding: 6px 11px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--axis); }
+  .seg button[aria-pressed=true] { background: var(--duke); color: #fff; }
+  input[type=range] { width: 190px; accent-color: var(--duke); }
+  .readout { font-variant-numeric: tabular-nums; font-weight: 650; font-size: 14px; color: var(--ink); min-width: 190px; }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--axis); padding: 6px 8px; white-space: nowrap; background: #fff; position: sticky; top: 0; }
+  td { border-bottom: 1px solid var(--grid); padding: 6px 8px; vertical-align: top; }
+  td.n, th.n { text-align: right; }
+  tr.row-link { cursor: pointer; }
+  tr.row-link:hover td { background: var(--duke-tint); }
+  tr.dim td { color: var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  .verdict { font-weight: 650; white-space: nowrap; }
+  .verdict.Hold i { color: var(--good); } .verdict.Narrow i { color: #b07800; } .verdict.Fail i { color: var(--critical); }
+  .verdict i { font-style: normal; font-size: 11px; margin-right: 5px; }
+  .formula { background: #f7f8fb; border: 1px solid var(--grid); border-radius: 8px; padding: 10px 12px; margin: 0; overflow-x: auto; line-height: 1.6; }
+  .formula b { color: var(--duke); font-weight: 650; }
+
+  /* Regulator */
+  .vint { display: grid; grid-template-columns: repeat(5, 1fr) 1.5fr; }
+  .vint div { padding: 2px 14px; border-left: 1px solid var(--grid); }
+  .vint div:first-child { border-left: 0; padding-left: 0; }
+  .vint b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--duke); }
+  .vint span { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+  ul.plain { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; display: grid; gap: 4px; }
+
+  /* Drill-through */
+  .crumb { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; background: var(--duke-tint); border: 1px solid var(--border); border-radius: 999px; padding: 4px 5px 4px 12px; font-size: 13px; }
+  .chip b { color: var(--duke); }
+  .chip button { border: 0; background: var(--duke); color: #fff; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; line-height: 1; font-size: 11px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile .l { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; }
+  .tile .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 2px 0; }
+  .tile .s { font-size: 12px; color: var(--muted); }
+  dl.src { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 6px 0 0; font-size: 14px; }
+  dl.src dt { color: var(--ink-2); }
+  dl.src dd { margin: 0; overflow-wrap: anywhere; }
+  .chain { counter-reset: st; }
+  .step { display: grid; grid-template-columns: 34px 1fr; gap: 12px; position: relative; padding-bottom: 16px; }
+  .step::before { counter-increment: st; content: counter(st); width: 28px; height: 28px; border-radius: 50%; background: var(--duke); color: #fff; font-weight: 700; font-size: 13px; display: grid; place-items: center; z-index: 1; }
+  .step:not(:last-child)::after { content: ""; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: var(--border); }
+  .step h3 { margin: 3px 0 2px; font-size: 14px; }
+  .step p { margin: 0; color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere; }
+  .nav-pn { display: flex; gap: 8px; margin-left: auto; }
+
+  footer { color: var(--muted); font-size: 12px; margin-top: 22px; border-top: 1px solid var(--grid); padding-top: 12px; display: grid; gap: 3px; }
+  footer b { color: var(--ink-2); font-weight: 600; margin-right: 4px; }
+  abbr[title] { text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 2px; cursor: help; }
+  dl.gloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px 24px; margin: 6px 0 0; font-size: 13px; }
+  dl.gloss div { display: grid; grid-template-columns: 92px 1fr; gap: 8px; }
+  dl.gloss dt { font-weight: 650; color: var(--duke); }
+  dl.gloss dd { margin: 0; color: var(--ink-2); }
+  kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--axis); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: #fff; color: var(--ink-2); }
+  .vintage { display: flex; gap: 16px; align-items: center; opacity: 1; }
+  .vintage span { opacity: .8; }
+  .btn.export { background: transparent; color: #fff; border-color: rgba(255,255,255,.55); padding: 5px 11px; font-size: 13px; }
+  .btn.export:hover { background: rgba(255,255,255,.12); }
+
+  /* Print view (#print): all three pages at landscape-letter width */
+  body.print-mode .wrap { width: 980px; max-width: none; padding-left: 0; padding-right: 0; }
+  body.print-mode .grid { grid-template-columns: repeat(12, 1fr); }
+  body.print-mode .s12 { grid-column: span 12; } body.print-mode .s8 { grid-column: span 8; } body.print-mode .s7 { grid-column: span 7; }
+  body.print-mode .s6 { grid-column: span 6; } body.print-mode .s5 { grid-column: span 5; } body.print-mode .s4 { grid-column: span 4; }
+  body.print-mode #s-reset { display: none; }
+  .print-banner { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--duke-tint); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; }
+  .print-banner span { flex: 1; }
+  .print-page + .print-page { margin-top: 28px; break-before: page; }
+  @media print {
+    @page { size: letter landscape; margin: 0.35in; }
+    body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .tabs, .btn, .hint, .drill-link, .print-banner, .keys, .nav-pn { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    body.print-mode .wrap { width: 980px; padding: 0; }
+    .top .inner { padding: 6px 0 4px; }
+    .panel { break-inside: avoid; }
+    .grid { grid-template-columns: repeat(12, 1fr) !important; }
+    .s12 { grid-column: span 12 !important; } .s8 { grid-column: span 8 !important; } .s7 { grid-column: span 7 !important; }
+    .s6 { grid-column: span 6 !important; } .s5 { grid-column: span 5 !important; } .s4 { grid-column: span 4 !important; }
+    .vint { grid-template-columns: repeat(5, 1fr) 1.5fr !important; }
+    .no-print { display: none !important; }
+    .tbl-wrap { overflow: visible; }
+    table { font-size: 10px; }
+    td, th { padding: 3px 6px; }
+    .formula { white-space: pre-wrap; font-size: 9.5px; }
+    table.register td { white-space: nowrap; font-size: 9px; }
+    table.register .mono { font-size: 9px; }
+    th { position: static; }
+  }
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .s12, .s8, .s7, .s6, .s5, .s4 { grid-column: auto; }
+    .vint { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .vint div { border-left: 0; padding-left: 0; }
+    .big { font-size: 44px; }
+    .wrap, .top .inner, .tabs { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <div class="brand">
+      <div class="eyebrow">Project Audible · FINTECH 590.05 · Duke University</div>
+      <div class="name">Is <abbr title="Buy now, pay later: short installment loans at checkout (Affirm, Klarna, Afterpay)">BNPL</abbr> masking consumer credit stress?</div>
+    </div>
+    <div class="vintage" id="vintage"></div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a href="#executive" data-page="executive">Executive <small>decide</small></a>
+    <a href="#analyst" data-page="analyst">Analyst <small>test the method</small></a>
+    <a href="#regulator" data-page="regulator">Regulator <small>trace the source</small></a>
+  </nav>
+</header>
+<div class="wrap">
+  <main id="app"></main>
+  <footer id="foot"></footer>
+</div>
+
+<script>
+// ============================================================ data model
+const D = window.DASH, K = D.kpi, T = D.trigger, M = D.meta, Q = D.quarters;
+const N = Q.length, LAST = N - 1;
+const byDate = Object.fromEntries(Q.map((q, i) => [q.date, i]));
+const AFFIRM = {
+  affirm30: { name: 'Affirm 30+ DPD rate', short: 'Affirm 30+ DPD', unit: '%', field: 'affirm_quarterly.csv · delinquency_30plus_pct' },
+  affirm90: { name: 'Affirm 90+ DPD rate', short: 'Affirm 90+ DPD', unit: '%', field: 'affirm_quarterly.csv · delinquency_90plus_pct' },
+  del_usd_mil: { name: 'Affirm 30+ DPD balances ($M)', short: 'Affirm 30+ DPD $', unit: '$M', field: '30+ DPD rate × loans_held_for_investment_mil' },
+};
+const CARD = {
+  cc30: { name: 'Card 30+ DPD rate', short: 'Card 30+ DPD', unit: '%', field: 'FRED DRCCLACBS', color: 'cards' },
+  nco: { name: 'Card net charge-off rate', short: 'Card charge-offs', unit: '%', field: 'FRED CORCCACBS', color: 'nco' },
+};
+
+// ============================================================ formatting
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = Object.fromEntries(['cards', 'affirm', 'nco', 'ink', 'ink-2', 'muted', 'grid', 'axis', 'bar-idle', 'duke', 'duke-2', 'critical']
+  .map(k => [k.replace('-', ''), css('--' + k)]));
+const pct = (v, d = 2) => v == null ? '—' : v.toFixed(d) + '%';
+const pp = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + ' pp';
+const pts = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + ' points';
+const rr = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const qWord = n => `${n} quarter${n === 1 ? '' : 's'}`;
+const aQ = n => `${n === 8 || n === 11 || n === 18 ? 'an' : 'a'} ${n}-quarter`;
+function addQ(iso, n) {
+  const [y, m] = iso.split('-').map(Number);
+  const t = y * 12 + (m - 1) + 3 * n, yy = Math.floor(t / 12), mm = t % 12 + 1;
+  return new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10);
+}
+const addDays = (iso, d) => new Date(Date.parse(iso) + d * 864e5).toISOString().slice(0, 10);
+const STATUS = {
+  none: { icon: '●', text: 'No trigger' }, watch: { icon: '▲', text: 'Watch' },
+  trigger: { icon: '■', text: 'Trigger' }, 'n/a': { icon: '–', text: 'No year-ago filing' },
+};
+const statusChip = s => `<span class="status ${s === 'n/a' ? 'na' : s}"><i aria-hidden="true">${STATUS[s].icon}</i>${STATUS[s].text}</span>`;
+const verdict = v => `<span class="verdict ${v}"><i aria-hidden="true">${v === 'Hold' ? '●' : v === 'Narrow' ? '▲' : '■'}</i>${v}</span>`;
+const trig = `+${T.trigger_pp.toFixed(2)} pp`;
+// Hover definitions for analyst/regulator terms; the executive page spells things out instead.
+const TERMS = {
+  BNPL: 'Buy now, pay later: short installment loans at checkout',
+  DPD: 'Days past due. 30+ DPD = share of balances at least 30 days late',
+  pp: 'Percentage points: the change between two percentages',
+  YoY: 'Year over year: this quarter minus the same quarter a year earlier',
+  'Q-o-Q': 'Quarter over quarter: this quarter minus the previous one',
+  r: 'Pearson correlation, from −1 to +1',
+  n: 'Number of quarter pairs behind a correlation',
+  CI: 'Confidence interval: the range the true value plausibly falls in (95%)',
+  NCO: 'Net charge-offs: balances written off as losses, net of recoveries, annualized',
+  FRED: 'Federal Reserve Economic Data, St. Louis Fed',
+  EDGAR: "The SEC's public filing database",
+  '10-K': 'Annual report filed with the SEC',
+  '10-Q': 'Quarterly report filed with the SEC',
+  HFI: 'Loans held for investment (kept on the balance sheet)',
+  UPB: 'Unpaid principal balance',
+};
+const ab = (t, label = t) => `<abbr title="${esc(TERMS[t])}">${label}</abbr>`;
+const glossary = keys => `<section class="panel s12"><h2>Terms</h2><dl class="gloss">${keys.map(k =>
+  `<div><dt>${k}</dt><dd>${esc(TERMS[k])}</dd></div>`).join('')}</dl></section>`;
+
+// ============================================================ measures (recomputed live from the same rows as the build)
+function pearson(x, y) {
+  const n = x.length;
+  if (n < 3) return null;
+  const mx = x.reduce((a, b) => a + b) / n, my = y.reduce((a, b) => a + b) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const dx = x[i] - mx, dy = y[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null;
+}
+function fisher(r, n) {
+  if (r == null || n <= 3) return [null, null];
+  const z = Math.atanh(r), se = 1 / Math.sqrt(n - 3);
+  return [Math.tanh(z - 1.96 * se), Math.tanh(z + 1.96 * se)];
+}
+function acf(x, j) {
+  const m = x.reduce((a, b) => a + b) / x.length, d = x.map(v => v - m);
+  let num = 0, den = 0;
+  d.forEach((v, i) => { den += v * v; if (i + j < d.length) num += v * d[i + j]; });
+  return num / den;
+}
+// Pyper & Peterman (1998) effective pairs: slow-moving series share less information
+// than their pair count. Floored at 4 so the interval exists, capped at n.
+function nEff(x, y) {
+  const n = x.length;
+  let s = 0;
+  for (let j = 1; j <= Math.floor(n / 5); j++) s += acf(x, j) * acf(y, j);
+  return 1 + 2 * s > 0 ? Math.min(n, Math.max(4, n / (1 + 2 * s))) : n;
+}
+// Pairs Affirm at quarter t with cards at t+lag inside the [s, e] window.
+// Changes are differenced inside the window, as lead_lag.py does.
+function lagPairs(aKey, cKey, lag, mode, s = 0, e = LAST) {
+  let a = Q.slice(s, e + 1).map(q => q[aKey]), c = Q.slice(s, e + 1).map(q => q[cKey]);
+  if (mode === 'changes') {
+    const d = v => v.map((x, i) => i === 0 || x == null || v[i - 1] == null ? null : x - v[i - 1]);
+    a = d(a); c = d(c);
+  }
+  const pairs = [];
+  for (let i = 0; i + lag < a.length; i++)
+    if (a[i] != null && c[i + lag] != null) pairs.push({ i: s + i, j: s + i + lag, a: a[i], c: c[i + lag] });
+  return pairs;
+}
+function lagStat(aKey, cKey, lag, mode, s, e) {
+  const p = lagPairs(aKey, cKey, lag, mode, s, e), r = pearson(p.map(d => d.a), p.map(d => d.c));
+  const [lo, hi] = fisher(r, p.length);
+  const ne = p.length > 3 ? nEff(p.map(d => d.a), p.map(d => d.c)) : null;
+  const [loA, hiA] = ne ? fisher(r, ne) : [null, null];
+  return { lag, r, n: p.length, lo, hi, ne, loA, hiA, pairs: p };
+}
+const lagTable = (aKey, cKey, mode, s, e) => [...Array(11).keys()].map(l => lagStat(aKey, cKey, l, mode, s, e));
+const bestOf = rows => rows.filter(r => r.r != null).reduce((a, b) => (!a || b.r > a.r ? b : a), null);
+
+// ============================================================ charts
+const charts = [];
+const font = { family: getComputedStyle(document.body).fontFamily, size: 12, color: C.ink2 };
+const cfg = { displayModeBar: false, responsive: true };
+const base = (extra = {}) => ({
+  font, paper_bgcolor: '#fff', plot_bgcolor: '#fff', margin: { l: 58, r: 18, t: 12, b: 40 },
+  hoverlabel: { bgcolor: '#fff', bordercolor: C.axis, font: { ...font, color: C.ink } },
+  legend: { orientation: 'h', x: 0, y: 1.1, font: { size: 13, color: C.ink } }, ...extra,
+});
+const yAxis = (title, max, unit = '%') => ({ title: { text: title, font: { size: 12 } }, range: [0, max], gridcolor: C.grid,
+  ticksuffix: unit === '%' ? '%' : '', tickprefix: unit === '$M' ? '$' : '', zeroline: true, zerolinecolor: C.axis, tickfont: { color: C.muted } });
+const xAxis = (extra = {}) => ({ linecolor: C.axis, tickfont: { color: C.muted }, tickformat: '%Y', hoverformat: '%b %Y',
+  range: [addQ(Q[0].date, -1), addQ(Q[LAST].date, 1)], showgrid: false, ...extra });
+function plot(id, traces, layout, onClick) {
+  Plotly.newPlot(id, traces, layout, cfg);
+  charts.push(id);
+  if (onClick) document.getElementById(id).on('plotly_click', ev => { const p = ev.points[0]; if (p) onClick(p); });
+}
+const lineTrace = (name, key, color, extra = {}) => ({
+  name, x: Q.map(q => q.date), y: Q.map(q => q[key]), mode: 'lines+markers', connectgaps: false,
+  line: { color, width: 2.5 }, marker: { size: 7, color, line: { color: '#fff', width: 2 } },
+  customdata: Q.map((q, i) => i), ...extra,
+});
+const yMax = keys => Math.ceil(Math.max(...Q.flatMap(q => keys.map(k => q[k] ?? 0))) * 1.25 * 2) / 2;
+const toQuarter = from => p => go(`drill/quarter/${Q[p.customdata].date}`, from);
+
+// ============================================================ router
+let origin = 'executive', TARGET = 'app';
+const APP = () => document.getElementById(TARGET);
+const PAGES = ['executive', 'analyst', 'regulator'];
+const ANALYST_DEFAULT = { s: 0, e: LAST, lag: 0, mode: 'levels', a: 'affirm30', c: 'cc30' };
+const ANALYST = { ...ANALYST_DEFAULT };
+function go(path, from) { location.hash = path + (from ? (path.includes('?') ? '&' : '?') + `from=${from}` : ''); }
+function render() {
+  charts.splice(0).forEach(id => { const el = document.getElementById(id); if (el) Plotly.purge(el); });
+  const [path, qs] = location.hash.replace(/^#/, '').split('?');
+  const [page, kind, arg] = (path || 'executive').split('/'), params = Object.fromEntries(new URLSearchParams(qs || ''));
+  const isDrill = page === 'drill';
+  document.body.classList.toggle('print-mode', page === 'print');
+  origin = isDrill ? (PAGES.includes(params.from) ? params.from : 'executive') : page;
+  const view = isDrill ? { quarter: drillQuarter, lag: drillLag, metric: drillMetric }[kind] : { executive, analyst, regulator, print: printAll }[page];
+  if (!view) origin = 'executive';
+  document.querySelectorAll('#tabs a').forEach(a => a.dataset.page === origin ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  (view || executive)(arg, params);
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', render);
+
+// Print view: all three pages stacked, one per landscape sheet, at print width so charts fit.
+function printAll(_, params) {
+  const names = { executive: 'Executive view: decide', analyst: 'Analyst view: test the method', regulator: 'Regulator view: trace the source' };
+  APP().innerHTML = `<div class="print-banner"><span>Print view: all three pages, analyst slicers at their current settings.</span>
+      <button class="btn primary" onclick="window.print()">Print or save as PDF</button><a class="btn" href="#executive">Back to dashboard</a></div>` +
+    PAGES.map((p, i) => `<section class="print-page"><p class="kicker">${i + 1} of 3 · ${names[p]}</p><div id="pv-${p}"></div></section>`).join('');
+  PAGES.forEach(p => { TARGET = `pv-${p}`; ({ executive, analyst, regulator })[p](); });
+  TARGET = 'app';
+  if (params.auto) setTimeout(() => window.print(), 700);
+}
+window.addEventListener('beforeprint', () => charts.forEach(id => { const el = document.getElementById(id); if (el) Plotly.Plots.resize(el); }));
+window.addEventListener('afterprint', () => charts.forEach(id => { const el = document.getElementById(id); if (el) Plotly.Plots.resize(el); }));
+
+// Presenter keys: 1-3 switch pages, arrows step a drill-through, Esc leaves it.
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  const inDrill = location.hash.startsWith('#drill');
+  if (['1', '2', '3'].includes(e.key)) go(PAGES[+e.key - 1]);
+  else if (e.key === 'Escape' && inDrill) go(origin);
+  else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && inDrill) {
+    const b = document.querySelectorAll('.nav-pn .btn')[e.key === 'ArrowLeft' ? 0 : 1];
+    if (b && !b.disabled) { e.preventDefault(); b.click(); }
+  }
+});
+
+function crumb(filterLabel, filterValue, extra = '') {
+  const back = { executive: 'Executive', analyst: 'Analyst', regulator: 'Regulator' }[origin];
+  return `<div class="crumb">
+    <button class="btn" onclick="go('${origin}')">← Back to ${back}</button>
+    <span class="chip">Drill-through filter: ${filterLabel} = <b>${esc(filterValue)}</b><button title="Clear the filter and go back" aria-label="Clear the filter and go back" onclick="go('${origin}')">✕</button></span>
+    ${extra}</div>`;
+}
+
+// ============================================================ EXECUTIVE: decision over depth
+function executive() {
+  const L = T.latest, first = T.first, falseAl = T.episodes.filter(e => !e.confirmed);
+  APP().innerHTML = `
+  <div class="grid">
+    <section class="panel conclusion s5" tabindex="0" role="link" aria-label="Drill through to the lead-lag evidence" id="concl">
+      <p class="kicker">Conclusion</p>
+      <h2>Buy now, pay later stress showed up ${qWord(K.lead_q)} before it reached credit cards</h2>
+      <div class="big">${K.lead_q} <small>quarters earlier</small></div>
+      <div class="peaks">
+        <span><span class="swatch" style="background:var(--affirm)"></span>Affirm peak <b>${pct(K.affirm_peak)}</b> in ${K.affirm_peak_label}</span>
+        <span><span class="swatch" style="background:var(--cards)"></span>Card peak <b>${pct(K.cc_peak)}</b> in ${K.cc_peak_label}</span>
+      </div>
+      <div class="signal">
+        ${statusChip(L.signal)}
+        <span class="txt">${L.label}: Affirm's late-payment rate is <b>${pts(L.yoy_pp)}</b> vs. a year ago. The trigger is ${pts(T.trigger_pp)}.</span>
+      </div>
+      <div class="drill-link">Why ${qWord(K.lead_q)}? Click to drill through →</div>
+    </section>
+
+    <section class="panel s7">
+      <p class="kicker">Now what</p>
+      <h2>Watch buy now, pay later as an early warning for card losses</h2>
+      <ol class="recs">
+        <li><div><b>Track Affirm's late-payment rate next to card delinquency each quarter.</b>
+          <span>It's public in Affirm's filings, and it turned first last cycle.</span></div></li>
+        <li><div><b>Review card lending when Affirm's rate rises ${T.trigger_pp.toFixed(2)} points in a year.</b>
+          <span>First fired ${first.start_label}, ${qWord(first.quarters_before_card_peak)} early.${falseAl.length ? ` One false alarm (${falseAl.map(e => e.start_label).join(', ')}).` : ''}</span></div></li>
+        <li><div><b>Get a second cycle of data before relying on the ${K.lead_q}-quarter gap.</b>
+          <span>Request late-payment data from Afterpay, Klarna and PayPal.</span></div></li>
+      </ol>
+    </section>
+
+    <section class="panel s12">
+      <h2 id="hero-title"></h2>
+      <p class="desc">Share of balances 30+ days late. Shaded: quarters the trigger fired. <span class="hint">Click a point for that quarter.</span></p>
+      <div id="hero" style="height:420px"></div>
+    </section>
+
+    <section class="panel trust s12">
+      <p><b>How sure are we?</b> The timing is solid: every test puts the gap at ${K.lead_range[0]}–${K.lead_range[1]} quarters.
+        The strength of the link is less certain, because the data covers one credit cycle. Treat it as a pattern, not a forecast.</p>
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn" href="#analyst">See the evidence →</a>
+        <a class="btn" href="#regulator">Trace every source →</a>
+      </span>
+    </section>
+  </div>`;
+
+  $('#hero-title').textContent = `Affirm delinquency peaked in ${K.affirm_peak_label}; card delinquency kept rising ${qWord(K.lead_q)} longer, to ${K.cc_peak_label}`;
+  const ymax = yMax(['affirm30', 'cc30']) + 0.4, top = ymax - 0.35;
+  const shapes = T.episodes.map(ep => ({ type: 'rect', xref: 'x', yref: 'paper', x0: addDays(ep.start_date, -45), x1: addDays(ep.end_date, 45),
+    y0: 0, y1: 1, fillcolor: 'rgba(208,59,59,0.08)', line: { width: 0 }, layer: 'below' }));
+  shapes.push(
+    { type: 'line', x0: K.affirm_peak_date, x1: K.cc_peak_date, y0: top, y1: top, line: { color: C.duke, width: 1.5 } },
+    { type: 'line', x0: K.affirm_peak_date, x1: K.affirm_peak_date, y0: top - 0.1, y1: top + 0.1, line: { color: C.duke, width: 1.5 } },
+    { type: 'line', x0: K.cc_peak_date, x1: K.cc_peak_date, y0: top - 0.1, y1: top + 0.1, line: { color: C.duke, width: 1.5 } });
+  const ann = [
+    { x: addQ(K.affirm_peak_date, K.lead_q / 2), y: top, yshift: 11, showarrow: false, text: `<b>${qWord(K.lead_q)} apart</b>`, font: { size: 13, color: C.duke } },
+    { x: K.affirm_peak_date, y: K.affirm_peak, yshift: 22, showarrow: false, text: `Affirm peak ${pct(K.affirm_peak)}`, font: { size: 12, color: C.ink } },
+    { x: K.cc_peak_date, y: K.cc_peak, yshift: 22, showarrow: false, text: `Card peak ${pct(K.cc_peak)}`, font: { size: 12, color: C.ink } },
+    ...T.episodes.map(ep => ({ x: ep.start_date, y: 0.45, xanchor: 'center', showarrow: false,
+      text: ep.confirmed ? 'Trigger fired' : 'Trigger fired;<br>cards did not follow', font: { size: 11, color: C.critical } })),
+  ];
+  const hov = who => `${who}, %{text}: <b>%{y:.2f}%</b><extra></extra>`;
+  plot('hero', [
+    lineTrace('Bank credit cards', 'cc30', C.cards, { text: Q.map(q => q.label), hovertemplate: hov('Credit cards') }),
+    lineTrace('Affirm (buy now, pay later)', 'affirm30', C.affirm, { text: Q.map(q => q.label), hovertemplate: hov('Affirm') }),
+  ], base({ hovermode: 'x unified', shapes, annotations: ann, xaxis: xAxis(), yaxis: yAxis('30+ days past due', ymax) }), toQuarter('executive'));
+
+  const concl = $('#concl'), drill = () => go(`drill/lag/${K.lead_q}`, 'executive');
+  concl.addEventListener('click', drill);
+  concl.addEventListener('keydown', e => { if (e.key === 'Enter') drill(); });
+}
+
+// ============================================================ ANALYST: depth over decision
+function analyst() {
+  const S = ANALYST, opts = sel => Q.map((q, i) => `<option value="${i}" ${i === sel ? 'selected' : ''}>${q.label}</option>`).join('');
+  const seg = (id, items, cur) => `<span class="seg" id="${id}">${items.map(([v, l]) => `<button data-v="${v}" aria-pressed="${v === cur}">${l}</button>`).join('')}</span>`;
+  const optsOf = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${v.name}</option>`).join('');
+  const count = v => D.ledger.filter(l => l.verdict === v).length, holds = count('Hold'), narrows = count('Narrow'), fails = count('Fail');
+  APP().innerHTML = `
+  <div class="page-intro"><h1>Analyst view: test the lead yourself</h1>
+    <p>Filters recalculate everything live. Defaults: full history.</p></div>
+  <div class="slicers">
+    <label class="slicer"><span>Window start</span><select id="s-start">${opts(S.s)}</select></label>
+    <label class="slicer"><span>Window end</span><select id="s-end">${opts(S.e)}</select></label>
+    <label class="slicer"><span>${ab('BNPL')} measure</span><select id="s-a">${optsOf(AFFIRM, S.a)}</select></label>
+    <label class="slicer"><span>Card measure</span><select id="s-c">${optsOf(CARD, S.c)}</select></label>
+    <div class="slicer"><span>Compare</span>${seg('s-mode', [['levels', 'Levels'], ['changes', 'Quarterly changes']], S.mode)}</div>
+    <label class="slicer"><span>Shift ${ab('BNPL')} forward</span><input type="range" id="s-lag" min="0" max="10" value="${S.lag}"></label>
+    <div class="slicer"><span>At this shift</span><span class="readout" id="readout"></span></div>
+    <button class="btn" id="s-reset" style="margin-left:auto">Reset to full history</button>
+  </div>
+  <div class="grid">
+    <section class="panel s12"><h2 id="t-shift"></h2>
+      <p class="desc" id="d-shift"></p><div id="c-shift" style="height:380px"></div></section>
+    <section class="panel s7"><h2 id="t-corr"></h2>
+      <p class="desc">Whiskers: 95% ${ab('CI')}, adjusted for overlapping quarters. Under each bar: pairs, then ≈ independent pairs.
+        <span class="hint">Click a bar to see its pairs.</span></p>
+      <div id="c-corr" style="height:330px"></div></section>
+    <section class="panel s5"><h2>Peaks are ${qWord(K.lead_q)} apart; troughs only ${K.trough_gap_q}</h2>
+      <p class="desc">The lead is clearest at the peak.</p>
+      <div class="tbl-wrap"><table>
+        <tr><th>Series</th><th>Trough</th><th>Peak</th></tr>
+        <tr><td><span class="swatch" style="background:var(--affirm)"></span>Affirm 30+ ${ab('DPD')}</td><td>${pct(K.affirm_trough)} · ${K.affirm_trough_label} <span class="hint">(${ab('UPB')} basis)</span></td><td>${pct(K.affirm_peak)} · ${K.affirm_peak_label}</td></tr>
+        <tr><td><span class="swatch" style="background:var(--cards)"></span>Card 30+ ${ab('DPD')}</td><td>${pct(K.cc_trough)} · ${K.cc_trough_label}</td><td>${pct(K.cc_peak)} · ${K.cc_peak_label}</td></tr>
+        <tr><td><b>Gap</b></td><td><b>${qWord(K.trough_gap_q)}</b></td><td><b>${qWord(K.lead_q)}</b></td></tr>
+      </table></div>
+      <h3 style="font-size:14px;margin:18px 0 4px">Trigger history (${trig} ${ab('YoY')})</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Fired</th><th>Card rise, next ${T.confirm_window_q} quarters</th><th>Outcome</th></tr>
+        ${T.episodes.map(e => `<tr class="row-link" data-date="${e.start_date}"><td>${e.start_label}${e.end_label !== e.start_label ? '–' + e.end_label : ''}</td>
+          <td>${pp(e.card_rise_pp)} at most</td><td>${e.confirmed ? 'Cards followed' : 'False alarm'}</td></tr>`).join('')}
+      </table></div></section>
+
+    <section class="panel s6"><h2 id="t-den"></h2>
+      <p class="desc">The strongest objection, at full size. New loans haven't had time to go late, so fast growth pulls the rate down.</p>
+      <div id="c-den" style="height:300px"></div></section>
+    <section class="panel s6"><h2>Measure definitions</h2>
+      <p class="desc">How every number is computed. Status colors come from the Signal rule.</p>
+<pre class="formula mono"><b>Affirm_30DPD</b>   = (Days_30_59 + Days_60_89 + Days_90_119) / Total_AmortizedCost
+<b>Affirm_90DPD</b>   = Days_90_119 / Total_AmortizedCost
+<b>Affirm_30DPD_$</b> = Affirm_30DPD × Loans_HeldForInvestment
+<b>Card_30DPD</b>     = FRED DRCCLACBS, quarter-end observation
+<b>Lead_Quarters</b>  = QUARTERS( ARGMAX(Card_30DPD) − ARGMAX(Affirm_30DPD) )
+<b>r(N)</b>           = PEARSON( Affirm[t], Card[t+N] ), pairwise
+<b>n_eff</b>          = n / ( 1 + 2 · SUM[j ≤ n/5] ACF_A(j) · ACF_C(j) )
+<b>CI95(r)</b>        = TANH( ATANH(r) ± 1.96 / SQRT(n_eff − 3) )
+<b>YoY_pp</b>         = Affirm_30DPD[t] − Affirm_30DPD[t−4]
+<b>Signal</b>         = SWITCH( TRUE(),
+                    YoY_pp ≥ ${T.trigger_pp.toFixed(2)}, "Trigger",
+                    YoY_pp ≥ ${T.watch_pp.toFixed(2)}, "Watch",
+                    "No trigger" )</pre>
+      <p class="hint" style="margin-top:8px">n_eff method: Pyper &amp; Peterman (1998). Code: scripts/lead_lag.py, build_dashboard_data.py</p></section>
+
+    <section class="panel s12"><h2>Position ledger: ${holds} of ${D.ledger.length} checks hold; ${narrows} narrow the claim${fails ? `; ${fails} fail` : ''}</h2>
+      <p class="desc">Each check names, in advance, the result that would weaken the claim.</p>
+      <div class="tbl-wrap"><table>
+        <tr><th>Check</th><th>Weakened if</th><th>Result</th><th>Verdict</th></tr>
+        ${D.ledger.map(l => `<tr><td>${esc(l.claim)}</td><td>${esc(l.test)}</td><td>${esc(l.result)}</td><td>${verdict(l.verdict)}</td></tr>`).join('')}
+      </table></div></section>
+
+    <section class="panel s12 no-print"><details><summary><h2 style="display:inline">Row-level data: ${M.n_affirm} Affirm quarters, ${M.n_quarters} card quarters</h2></summary>
+      <p class="desc" style="margin-top:8px">Rows outside the window are dimmed. <span class="hint">Click a row for that quarter.</span></p>
+      <div class="tbl-wrap"><table id="detail"></table></div></details></section>
+    ${glossary(['BNPL', 'DPD', 'pp', 'YoY', 'r', 'n', 'CI', 'NCO', 'UPB'])}
+  </div>`;
+
+  $('#s-start').onchange = e => { S.s = Math.min(+e.target.value, S.e - 4); drawAnalyst(); };
+  $('#s-end').onchange = e => { S.e = Math.max(+e.target.value, S.s + 4); drawAnalyst(); };
+  $('#s-a').onchange = e => { S.a = e.target.value; drawAnalyst(); };
+  $('#s-c').onchange = e => { S.c = e.target.value; drawAnalyst(); };
+  $('#s-lag').oninput = e => { S.lag = +e.target.value; drawAnalyst(); };
+  $('#s-mode').querySelectorAll('button').forEach(b => b.onclick = () => { S.mode = b.dataset.v; drawAnalyst(); });
+  $('#s-reset').onclick = () => { Object.assign(S, ANALYST_DEFAULT); analyst(); };
+  document.querySelectorAll('tr.row-link[data-date]').forEach(tr => tr.onclick = () => go(`drill/quarter/${tr.dataset.date}`, 'analyst'));
+
+  // Denominator check: a property of Affirm's book, so it ignores the slicers.
+  const pk = byDate[K.affirm_peak_date], lastDel = Q[LAST].del_usd_mil, pkDel = Q[pk].del_usd_mil;
+  $('#t-den').textContent = `After the rate peaked, Affirm's delinquent balances still rose from $${pkDel.toFixed(0)}M to $${lastDel.toFixed(0)}M as its book grew ${(Q[LAST].loans_mil / Q[pk].loans_mil).toFixed(1)}×`;
+  plot('c-den', [{ type: 'bar', x: Q.map(q => q.date), y: Q.map(q => q.del_usd_mil),
+    marker: { color: Q.map((q, i) => i === pk ? C.affirm : 'rgba(235,104,52,0.5)'), line: { color: '#fff', width: 1 } },
+    customdata: Q.map((q, i) => i), text: Q.map(q => q.loans_mil == null ? '' : `${q.label} · rate ${pct(q.affirm30)} · book $${(q.loans_mil / 1000).toFixed(2)}B`),
+    textposition: 'none', hovertemplate: '%{text}<br>30+ DPD balances: <b>$%{y:.0f}M</b><extra></extra>' }],
+    base({ showlegend: false, margin: { l: 58, r: 10, t: 10, b: 36 }, bargap: 0.2, xaxis: xAxis(), yaxis: yAxis('$ millions', yMax(['del_usd_mil']), '$M'),
+      annotations: [{ x: K.affirm_peak_date, y: pkDel, yshift: 10, showarrow: false, text: 'Rate peak', font: { size: 11, color: C.ink } }] }),
+    p => go(`drill/quarter/${Q[p.customdata].date}`, 'analyst'));
+  drawAnalyst(true);
+}
+
+function drawAnalyst(first) {
+  const S = ANALYST, A = AFFIRM[S.a], Cc = CARD[S.c];
+  $('#s-start').value = S.s; $('#s-end').value = S.e;
+  $('#s-mode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.mode));
+  const rows = lagTable(S.a, S.c, S.mode, S.s, S.e), cur = rows[S.lag], bst = bestOf(rows);
+  const win = `${Q[S.s].label}–${Q[S.e].label}`, modeTxt = S.mode === 'levels' ? 'levels' : 'quarterly changes';
+  const ci = st => st.loA == null ? '' : ` · adjusted 95% CI ${rr(st.loA)} to ${rr(st.hiA)}`;
+  $('#readout').textContent = cur.r == null ? `${qWord(S.lag)} · too few pairs` : `${qWord(S.lag)} · r = ${rr(cur.r)} (n = ${cur.n}, ≈${Math.round(cur.ne)} effective)`;
+
+  // Shift chart: one axis when units match, stacked panels when they don't. Never a dual axis.
+  const same = A.unit === Cc.unit;
+  $('#t-shift').textContent = cur.r == null ? `Shifted ${qWord(S.lag)}, too few overlapping quarters in ${win} to compare`
+    : `Shifted ${qWord(S.lag)} later, ${A.short} tracks ${Cc.short} at r = ${rr(cur.r)}`;
+  $('#d-shift').textContent = `${win} · ${cur.n} pairs${ci(cur)}${S.mode === 'levels' ? '' : ' · r uses quarterly changes; the chart shows levels'}` +
+    (same ? '.' : ' · separate panels because units differ.');
+  const inWin = i => i >= S.s && i <= S.e;
+  const valFmt = A.unit === '%' ? '%{y:.2f}%' : '$%{y:.0f}M';
+  const aT = { name: `${A.short}${S.lag ? `, shifted ${S.lag}Q later` : ''}`, x: Q.map(q => addQ(q.date, S.lag)), y: Q.map((q, i) => inWin(i) ? q[S.a] : null),
+    mode: 'lines+markers', connectgaps: false, line: { color: C.affirm, width: 2.5 }, marker: { size: 7, color: C.affirm, line: { color: '#fff', width: 2 } },
+    customdata: Q.map((q, i) => i), text: Q.map(q => `${q.label}${q.form ? ` · ${q.form} ${q.accession}` : ''}`),
+    hovertemplate: `${A.short}, %{text}: <b>${valFmt}</b><br><span style="color:#7a7974">${A.field} · pulled ${M.sec_pulled}</span><extra></extra>` };
+  const cColor = C[Cc.color];
+  const cT = { name: Cc.short, x: Q.map(q => q.date), y: Q.map((q, i) => inWin(i) ? q[S.c] : null), mode: 'lines+markers',
+    line: { color: cColor, width: 2.5 }, marker: { size: 7, color: cColor, line: { color: '#fff', width: 2 } },
+    customdata: Q.map((q, i) => i), text: Q.map(q => q.label), yaxis: same ? 'y' : 'y2',
+    hovertemplate: `${Cc.short}, %{text}: <b>%{y:.2f}%</b><br><span style="color:#7a7974">${Cc.field} · pulled ${M.fred_pulled}</span><extra></extra>` };
+  const lay = base({ hovermode: 'x unified', xaxis: xAxis({ range: [addQ(Q[S.s].date, -1), addQ(Q[S.e].date, Math.max(1, S.lag + 1))], anchor: same ? 'y' : 'y2' }) });
+  if (same) lay.yaxis = yAxis('% of balances', yMax([S.a, S.c]));
+  else {
+    lay.yaxis = { ...yAxis(A.short, yMax([S.a]), A.unit), domain: [0.56, 1] };
+    lay.yaxis2 = { ...yAxis(Cc.short, yMax([S.c]), Cc.unit), domain: [0, 0.42] };
+  }
+  if (first) plot('c-shift', [cT, aT], lay, p => go(`drill/quarter/${Q[p.customdata].date}`, 'analyst'));
+  else Plotly.react('c-shift', [cT, aT], lay, cfg);
+
+  // Correlation by lag with confidence intervals
+  $('#t-corr').textContent = !bst ? `Not enough overlap in ${win} for a lag test`
+    : `Correlation peaks at ${aQ(bst.lag)} lead (r = ${rr(bst.r)})`;
+  const bars = [{ type: 'bar', x: rows.map(r => r.lag), y: rows.map(r => r.r),
+    marker: { color: rows.map(r => r.lag === S.lag ? C.duke : C.baridle), line: { color: '#fff', width: 2 } },
+    error_y: { type: 'data', symmetric: false, array: rows.map(r => r.hiA != null ? r.hiA - r.r : 0),
+      arrayminus: rows.map(r => r.loA != null ? r.r - r.loA : 0), color: C.ink2, thickness: 1.2, width: 4 },
+    customdata: rows.map(r => [r.n, r.ne == null ? NaN : r.ne, r.loA ?? NaN, r.hiA ?? NaN, r.lo ?? NaN, r.hi ?? NaN]),
+    hovertemplate: 'Affirm leads by %{x}Q<br>r = <b>%{y:+.2f}</b> (n = %{customdata[0]}, ≈%{customdata[1]:.0f} effective)' +
+      '<br>Adjusted 95% CI %{customdata[2]:+.2f} to %{customdata[3]:+.2f}<br><span style="color:#7a7974">If pairs were independent: %{customdata[4]:+.2f} to %{customdata[5]:+.2f}</span><extra></extra>' }];
+  const corrLay = base({ showlegend: false, bargap: 0.28, margin: { l: 48, r: 10, t: 10, b: 44 },
+    annotations: rows.map(r => ({ x: r.lag, y: -1, yanchor: 'bottom', yshift: 2, showarrow: false,
+      text: `${r.n}<br>≈${r.ne == null ? '–' : Math.round(r.ne)}`, font: { size: 10, color: C.muted } })),
+    xaxis: { title: { text: 'Affirm leads cards by (quarters)', font: { size: 12 } }, dtick: 1, tickfont: { color: C.muted }, linecolor: C.axis },
+    yaxis: { title: { text: 'Correlation (r)', font: { size: 12 } }, range: [-1, 1], dtick: 0.5, gridcolor: C.grid, zeroline: true, zerolinecolor: C.ink2, tickfont: { color: C.muted } } });
+  if (first) plot('c-corr', bars, corrLay, p => go(`drill/lag/${p.x}?mode=${S.mode}&a=${S.a}&c=${S.c}&s=${S.s}&e=${S.e}`, 'analyst'));
+  else Plotly.react('c-corr', bars, corrLay, cfg);
+
+  // Row-level table
+  $('#detail').innerHTML = `<tr><th>Quarter</th><th class="n">Affirm 30+</th><th class="n">Affirm 90+</th><th class="n">Book $M</th><th class="n">30+ ${ab('DPD')} $M</th>
+    <th class="n">${ab('YoY')}</th><th>Signal</th><th class="n">Card 30+</th><th class="n">Card ${ab('NCO')}</th><th>Affirm basis</th><th>Source filing</th></tr>` +
+    Q.map((q, i) => `<tr class="row-link ${inWin(i) ? '' : 'dim'}" data-i="${i}"><td>${q.label}</td><td class="n">${pct(q.affirm30)}</td><td class="n">${pct(q.affirm90)}</td>
+    <td class="n">${q.loans_mil == null ? '—' : q.loans_mil.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td><td class="n">${q.del_usd_mil == null ? '—' : q.del_usd_mil.toFixed(0)}</td>
+    <td class="n">${pp(q.yoy_pp)}</td><td>${statusChip(q.signal)}</td><td class="n">${pct(q.cc30)}</td><td class="n">${pct(q.nco)}</td>
+    <td class="mono">${q.basis || '—'}</td><td class="mono">${q.form ? q.form + ' ' + q.accession : 'not reported'}</td></tr>`).join('');
+  document.querySelectorAll('#detail tr.row-link').forEach(tr => tr.onclick = () => go(`drill/quarter/${Q[+tr.dataset.i].date}`, 'analyst'));
+}
+
+// ============================================================ REGULATOR: accountability, neutral framing
+const srcLine = i => { const q = Q[i]; return q.form ? `${q.form} filed ${q.filed}, accession <span class="mono">${q.accession}</span>` : 'not reported'; };
+function regulator() {
+  const firstOrig = Q.findIndex(q => q.basis === 'hfi_by_origination'), upb = Q.findIndex(q => q.basis === 'hfi_hfs_upb');
+  const figs = [
+    { id: 'affirm_peak', fig: 'Highest Affirm 30+ DPD rate', val: `${pct(K.affirm_peak)} (${K.affirm_peak_label})`, how: `MAX of Affirm 30+ DPD, ${Q[0].label}–${Q[LAST].label}`, src: srcLine(byDate[K.affirm_peak_date]) },
+    { id: 'cc_peak', fig: 'Highest card 30+ DPD rate', val: `${pct(K.cc_peak)} (${K.cc_peak_label})`, how: `MAX of DRCCLACBS, ${Q[0].label}–${Q[LAST].label}`, src: `FRED DRCCLACBS, observation ${Q[byDate[K.cc_peak_date]].fred_obs_date}` },
+    { id: 'lead', fig: 'Quarters between the two highs', val: qWord(K.lead_q), how: 'Card high quarter minus Affirm high quarter', src: 'Derived from the two rows above' },
+    { id: 'best_levels', fig: 'Highest lagged correlation, levels', val: `r = ${K.best_levels.r.toFixed(3)}, lag ${K.best_levels.lag}, n = ${K.best_levels.n} (≈${Math.round(K.best_levels.n_eff)} effective)`, how: 'Pearson, lags 0–10, pairwise deletion', src: 'scripts/lead_lag.py' },
+    { id: 'best_changes', fig: 'Highest lagged correlation, changes', val: `r = ${K.best_changes.r.toFixed(3)}, lag ${K.best_changes.lag}, n = ${K.best_changes.n} (≈${Math.round(K.best_changes.n_eff)} effective)`, how: 'Same, on quarter-over-quarter differences', src: 'scripts/lead_lag.py' },
+    { id: 'signal', fig: `Year-over-year change, ${T.latest.label}`, val: pp(T.latest.yoy_pp), how: 'Affirm 30+ DPD minus the same quarter a year earlier', src: srcLine(LAST) },
+  ];
+  APP().innerHTML = `
+  <div class="page-intro"><h1>Regulator view: reported data and its sources</h1>
+    <p>Values as filed, with the source behind each one. No conclusions drawn.</p></div>
+  <div class="grid">
+    <section class="panel s12"><div class="vint">
+      <div><b>Coverage</b><span>${Q[0].label}–${Q[LAST].label}<br>${M.n_affirm} Affirm quarters</span></div>
+      <div><b>SEC ${ab('EDGAR')}</b><span>Pulled ${fmtDate(M.sec_pulled)}<br>${M.n_filings} filings</span></div>
+      <div><b>${ab('FRED')}</b><span>Pulled ${fmtDate(M.fred_pulled)}<br>subject to revision</span></div>
+      <div><b>Build</b><span>${M.built_at}</span></div>
+      <div><b>Commit</b><span class="mono">${esc(M.commit)}</span></div>
+      <div><b>Next data (approx.)</b><span>Affirm ${ab('10-Q')}: ${esc(M.next_data[0].expected)}<br>Fed card rates: ${esc(M.next_data[1].expected)}</span></div>
+    </div></section>
+
+    <section class="panel s12"><h2>30+ day delinquency rate: Affirm Holdings and U.S. commercial bank credit cards, quarterly</h2>
+      <p class="desc">% of balances 30+ days past due. Reporting changes are marked. <span class="hint">Click a point for its source.</span></p>
+      <div id="reg" style="height:400px"></div></section>
+
+    <section class="panel s12"><h2>Headline figures and how each is reproduced</h2>
+      <p class="desc">Every figure on the executive page. <span class="hint">Click a row for its source chain.</span></p>
+      <div class="tbl-wrap"><table>
+        <tr><th>Figure</th><th>Value</th><th>Computed as</th><th>Source</th></tr>
+        ${figs.map(f => `<tr class="row-link" data-m="${f.id}"><td>${f.fig}</td><td><b>${f.val}</b></td><td>${f.how}</td><td>${f.src}</td></tr>`).join('')}
+      </table></div></section>
+
+    <section class="panel s12"><h2>Source register, one row per quarter</h2>
+      <p class="desc">When a quarter appears in several filings, the latest one is used. <span class="hint">Click a row for detail.</span></p>
+      <div class="tbl-wrap"><table class="register">
+        <tr><th>Quarter</th><th class="n">Affirm 30+</th><th class="n">Affirm 90+</th><th>Table basis</th><th>Form</th><th>Filed</th><th>Column used</th><th>Accession</th><th class="n">Card 30+</th><th class="n">Card ${ab('NCO')}</th><th>${ab('FRED')} date</th></tr>
+        ${Q.map((q, i) => `<tr class="row-link" data-i="${i}"><td>${q.label}</td><td class="n">${pct(q.affirm30)}</td><td class="n">${pct(q.affirm90)}</td>
+          <td class="mono">${q.basis || '—'}</td><td>${q.form || 'not reported'}</td><td>${q.filed || '—'}</td>
+          <td>${q.filing_period ? (q.filing_period === q.date ? 'current period' : 'comparative, filing for ' + q.filing_period) : '—'}</td>
+          <td class="mono">${q.edgar_url ? `<a href="${q.edgar_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${q.accession}</a>` : '—'}</td>
+          <td class="n">${pct(q.cc30)}</td><td class="n">${pct(q.nco)}</td><td>${q.fred_obs_date}</td></tr>`).join('')}
+      </table></div></section>
+
+    <section class="panel s7"><h2>Source catalog</h2>
+      <div class="tbl-wrap"><table>
+        <tr><th>Series</th><th>Publisher</th><th>Frequency, units</th><th>Transform</th><th>Raw file</th></tr>
+        <tr><td>Affirm 30+ / 90+ ${ab('DPD')}</td><td>Affirm Holdings, Inc. (CIK 1820953), SEC EDGAR</td><td>Quarterly, % of balance</td><td>Aging-table buckets summed, divided by total</td><td class="mono">data/raw/affirm/&lt;accession&gt;/</td></tr>
+        <tr><td>DRCCLACBS</td><td>Board of Governors, via FRED</td><td>Quarterly, %, seasonally adjusted</td><td>Quarter-end value</td><td class="mono">data/raw/DRCCLACBS.csv</td></tr>
+        <tr><td>CORCCACBS</td><td>Board of Governors, via FRED</td><td>Quarterly, %, annualized, seasonally adjusted</td><td>Quarter-end value</td><td class="mono">data/raw/CORCCACBS.csv</td></tr>
+      </table></div></section>
+    <section class="panel s5"><h2>Known data limitations</h2>
+      <ul class="plain">
+        <li>Q3 2020: no Affirm filing; left blank.</li>
+        <li>${Q[upb].label}: ${ab('UPB')} basis, not amortized cost.</li>
+        <li>From ${Q[firstOrig].label}: by-origination table, ${ab('HFI')} only.</li>
+        <li>April 2022: Affirm begins reporting to Experian.</li>
+        <li>One lender vs. all commercial banks; one credit cycle (${K.best_levels.n} pairs ≈ ${Math.round(K.best_levels.n_eff)} independent).</li>
+        <li>Fed card series are seasonally adjusted; Affirm's are not.</li>
+        <li>${ab('FRED')} values are revised; shown as of the pull date.</li>
+      </ul></section>
+    ${glossary(['DPD', 'NCO', 'FRED', 'EDGAR', '10-K', '10-Q', 'HFI', 'UPB'])}
+  </div>`;
+
+  const ymax = yMax(['affirm30', 'cc30']);
+  const sym = Q.map(q => q.basis === 'hfi_hfs_upb' ? 'diamond' : 'circle');
+  const tip = Q.map(q => q.form ? `${q.label} · ${q.form} filed ${q.filed} · ${q.accession}<br>basis ${q.basis}` : `${q.label} · not reported`);
+  const breakX = addDays(Q[firstOrig].date, -45);
+  plot('reg', [
+    lineTrace('All commercial banks, credit cards (DRCCLACBS)', 'cc30', C.cards, { text: Q.map(q => `${q.label} · FRED DRCCLACBS obs ${q.fred_obs_date}`), hovertemplate: '%{text}<br><b>%{y:.2f}%</b><extra></extra>' }),
+    lineTrace('Affirm Holdings, 30+ DPD', 'affirm30', C.affirm, { text: tip, marker: { size: Q.map(q => q.basis === 'hfi_hfs_upb' ? 11 : 7), color: C.affirm, symbol: sym, line: { color: '#fff', width: 2 } },
+      hovertemplate: '%{text}<br><b>%{y:.2f}%</b><extra></extra>' }),
+  ], base({ hovermode: 'closest', xaxis: xAxis(), yaxis: yAxis('% of balances, 30+ days past due', ymax),
+    shapes: [{ type: 'line', x0: breakX, x1: breakX, y0: 0, y1: ymax * 0.86, line: { color: C.muted, width: 1, dash: 'dot' } },
+             { type: 'line', x0: M.bureau_reporting_start, x1: M.bureau_reporting_start, y0: 0, y1: ymax * 0.86, line: { color: C.muted, width: 1, dash: 'dot' } }],
+    annotations: [
+      { x: breakX, y: ymax * 0.86, yanchor: 'bottom', xanchor: 'right', xshift: -4, showarrow: false, align: 'right', text: 'Table changes to by-origination,<br>held for investment only', font: { size: 11, color: C.ink2 } },
+      { x: M.bureau_reporting_start, y: ymax * 0.86, yanchor: 'bottom', xanchor: 'left', xshift: 4, showarrow: false, align: 'left', text: 'Apr 2022: Affirm begins<br>reporting to Experian', font: { size: 11, color: C.ink2 } },
+      { x: Q[upb].date, y: Q[upb].affirm30, xanchor: 'left', xshift: 10, yshift: -4, showarrow: false, text: '◆ Unpaid principal basis', font: { size: 11, color: C.ink2 } },
+      { x: '2020-09-30', y: 0.35, showarrow: false, text: 'Q3 2020<br>not reported', font: { size: 11, color: C.muted } },
+    ] }), toQuarter('regulator'));
+  document.querySelectorAll('tr.row-link[data-m]').forEach(tr => tr.onclick = () => go(`drill/metric/${tr.dataset.m}`, 'regulator'));
+  document.querySelectorAll('tr.row-link[data-i]').forEach(tr => tr.onclick = () => go(`drill/quarter/${Q[+tr.dataset.i].date}`, 'regulator'));
+}
+
+// ============================================================ DRILL-THROUGH: one quarter
+function drillQuarter(date) {
+  const i = byDate[date] ?? LAST, q = Q[i], prev = Q[i - 1], later = Q[i + K.lead_q];
+  const neutral = origin === 'regulator';
+  const step = j => `go('drill/quarter/${Q[j].date}','${origin}')`;
+  APP().innerHTML = crumb('Quarter', q.label, `<span class="nav-pn">
+      <button class="btn" ${i === 0 ? 'disabled' : ''} onclick="${step(Math.max(0, i - 1))}">← Previous</button>
+      <button class="btn" ${i === LAST ? 'disabled' : ''} onclick="${step(Math.min(LAST, i + 1))}">Next →</button></span>`) + `
+  <div class="page-intro"><h1>${q.label}${q.affirm30 == null ? ': no Affirm filing reports this quarter' : ''}</h1>
+    <p>${neutral ? 'Reported values and their source documents.' : `Affirm signal this quarter: ${STATUS[q.signal].text.toLowerCase()}.`}</p></div>
+  <div class="tiles">
+    <div class="tile"><div class="l"><span class="swatch" style="background:var(--affirm)"></span>Affirm 30+ DPD</div><div class="v">${pct(q.affirm30)}</div>
+      <div class="s">${prev && prev.affirm30 != null && q.affirm30 != null ? `${pp(q.affirm30 - prev.affirm30)} vs ${prev.label}` : 'no prior quarter to compare'}</div></div>
+    <div class="tile"><div class="l">Affirm year-over-year change</div><div class="v">${pp(q.yoy_pp)}</div><div class="s">${statusChip(q.signal)}</div></div>
+    <div class="tile"><div class="l">Affirm 90+ DPD</div><div class="v">${pct(q.affirm90)}</div><div class="s">severe delinquency</div></div>
+    <div class="tile"><div class="l">Affirm loan book</div><div class="v">${q.loans_mil == null ? '—' : '$' + (q.loans_mil / 1000).toFixed(2) + 'B'}</div><div class="s">${q.del_usd_mil == null ? '' : '$' + q.del_usd_mil.toFixed(0) + 'M is 30+ days past due'}</div></div>
+    <div class="tile"><div class="l"><span class="swatch" style="background:var(--cards)"></span>Card 30+ DPD</div><div class="v">${pct(q.cc30)}</div>
+      <div class="s">${prev ? `${pp(q.cc30 - prev.cc30)} vs ${prev.label}` : ''}</div></div>
+    <div class="tile"><div class="l"><span class="swatch" style="background:var(--nco)"></span>Card net charge-offs</div><div class="v">${pct(q.nco)}</div><div class="s">annualized</div></div>
+    ${neutral ? '' : `<div class="tile"><div class="l">Cards ${qWord(K.lead_q)} later</div><div class="v">${later ? pct(later.cc30) : '—'}</div><div class="s">${later ? later.label : 'beyond the data'}</div></div>`}
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <section class="panel s7"><h2>${q.label} in context</h2><p class="desc">The vertical line marks the selected quarter${neutral ? '' : `; the ring marks card delinquency ${qWord(K.lead_q)} later`}.
+      <span class="hint">Click another point to move the filter.</span></p><div id="dq" style="height:330px"></div></section>
+    <section class="panel s5"><h2>Sources for this quarter</h2>
+      <h3 style="font-size:14px;margin:10px 0 0">Affirm</h3>
+      ${q.form ? `<dl class="src">
+        <dt>Document</dt><dd>${q.form}, filed ${q.filed}</dd>
+        <dt>Column used</dt><dd>${q.filing_period === q.date ? 'Current period' : `Comparative column in the filing for ${q.filing_period}`}</dd>
+        <dt>Accession</dt><dd class="mono"><a href="${q.edgar_url}" target="_blank" rel="noopener">${q.accession}</a></dd>
+        <dt>Table basis</dt><dd>${esc(D.basis_labels[q.basis] || q.basis)}</dd>
+        <dt>Processed row</dt><dd class="mono">affirm_quarterly.csv · quarter_end ${q.date}</dd></dl>` : '<p class="desc">No 10-K or 10-Q reports this quarter end, so the dashboard leaves it blank.</p>'}
+      <h3 style="font-size:14px;margin:14px 0 0">Credit cards</h3>
+      <dl class="src"><dt>Series</dt><dd>FRED DRCCLACBS (30+ DPD), CORCCACBS (charge-offs)</dd><dt>Observation</dt><dd>${q.fred_obs_date}, quarterly</dd>
+        <dt>Processed row</dt><dd class="mono">fred_quarterly.csv · quarter ${q.date}</dd><dt>Pulled</dt><dd>${M.fred_pulled}</dd></dl>
+    </section>
+  </div>`;
+  const ymax = yMax(['affirm30', 'cc30']);
+  const traces = [lineTrace('Card 30+ DPD', 'cc30', C.cards, { text: Q.map(x => x.label), hovertemplate: 'Cards, %{text}: <b>%{y:.2f}%</b><extra></extra>' }),
+    lineTrace('Affirm 30+ DPD', 'affirm30', C.affirm, { text: Q.map(x => x.label), hovertemplate: 'Affirm, %{text}: <b>%{y:.2f}%</b><extra></extra>' })];
+  if (later && !neutral) traces.push({ name: `Cards ${K.lead_q}Q later`, x: [later.date], y: [later.cc30], mode: 'markers', showlegend: false,
+    marker: { size: 18, color: 'rgba(0,0,0,0)', line: { color: C.duke, width: 2.5 } }, hoverinfo: 'skip' });
+  plot('dq', traces, base({ hovermode: 'x unified', xaxis: xAxis(), yaxis: yAxis('% of balances', ymax),
+    shapes: [{ type: 'line', x0: q.date, x1: q.date, y0: 0, y1: ymax, line: { color: C.duke, width: 2 } }] }),
+    p => p.customdata != null && go(`drill/quarter/${Q[p.customdata].date}`, origin));
+}
+
+// ============================================================ DRILL-THROUGH: one lag
+function drillLag(lagArg, P) {
+  const lag = Math.max(0, Math.min(10, +lagArg || 0)), mode = P.mode === 'changes' ? 'changes' : 'levels';
+  const a = AFFIRM[P.a] ? P.a : 'affirm30', c = CARD[P.c] ? P.c : 'cc30';
+  const s = P.s != null ? +P.s : 0, e = P.e != null ? +P.e : LAST, st = lagStat(a, c, lag, mode, s, e);
+  const A = AFFIRM[a], Cc = CARD[c], keep = `mode=${mode}&a=${a}&c=${c}&s=${s}&e=${e}`;
+  const nav = l => `go('drill/lag/${l}?${keep}','${origin}')`;
+  APP().innerHTML = crumb('Affirm lead', qWord(lag), `<span class="nav-pn">
+      <button class="btn" ${lag === 0 ? 'disabled' : ''} onclick="${nav(Math.max(0, lag - 1))}">← ${Math.max(0, lag - 1)}Q</button>
+      <button class="btn" ${lag === 10 ? 'disabled' : ''} onclick="${nav(Math.min(10, lag + 1))}">${Math.min(10, lag + 1)}Q →</button></span>`) + `
+  <div class="page-intro"><h1>${st.r == null ? 'Too few quarter pairs at this lead' : `At ${aQ(lag)} lead, r = ${rr(st.r)}`}</h1>
+    <p>${st.n} pairs, ≈${st.ne == null ? '–' : Math.round(st.ne)} independent · 95% ${ab('CI')} ${rr(st.loA)} to ${rr(st.hiA)} · ${mode === 'levels' ? 'levels' : 'quarterly changes'}, ${Q[s].label}–${Q[e].label}</p></div>
+  <div class="grid">
+    <section class="panel s7"><h2>Each dot is one quarter pair</h2>
+      <p class="desc">${A.short} at quarter t vs. ${Cc.short} ${qWord(lag)} later. Neighbouring quarters overlap, so the range above is adjusted
+        (unadjusted: ${st.lo == null ? '—' : `${rr(st.lo)} to ${rr(st.hi)}`}). <span class="hint">Click a dot for its quarter.</span></p>
+      <div id="dl" style="height:400px"></div></section>
+    <section class="panel s5"><h2>The ${st.n} pairs behind the number</h2>
+      <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table>
+        <tr><th>Affirm quarter</th><th class="n">${A.short}</th><th>Card quarter</th><th class="n">${Cc.short}</th></tr>
+        ${st.pairs.map(p => `<tr class="row-link" data-d="${Q[p.i].date}"><td>${Q[p.i].label}</td><td class="n">${p.a.toFixed(2)}</td><td>${Q[p.j].label}</td><td class="n">${p.c.toFixed(2)}</td></tr>`).join('')}
+      </table></div></section>
+    ${origin === 'executive' ? `<section class="panel s12 trust"><p>The peaks are ${qWord(K.lead_q)} apart, and correlation is highest at a ${K.best_changes.lag}–${K.best_levels.lag} quarter lead: the two tests agree.
+      Both rest on one credit cycle.</p>
+      <a class="btn primary" href="#analyst">Test other windows on the Analyst page →</a></section>` : ''}
+  </div>`;
+  const unitTxt = mode === 'changes' ? ' change' : '';
+  plot('dl', [{ x: st.pairs.map(p => p.a), y: st.pairs.map(p => p.c), mode: 'markers+text', type: 'scatter',
+    text: st.pairs.map(p => Q[p.i].label.replace(' 20', " '")), textposition: 'top center', textfont: { size: 10, color: C.muted },
+    marker: { size: 11, color: C.duke, line: { color: '#fff', width: 2 } }, customdata: st.pairs.map(p => [Q[p.i].label, Q[p.j].label, p.i]),
+    hovertemplate: `${A.short} %{customdata[0]}: <b>%{x:.2f}</b><br>${Cc.short} %{customdata[1]}: <b>%{y:.2f}</b><extra></extra>` }],
+    base({ showlegend: false, hovermode: 'closest', margin: { l: 60, r: 20, t: 10, b: 50 },
+      xaxis: { title: { text: `${A.short}${unitTxt} at quarter t (${A.unit === '%' ? '%' : '$M'})`, font: { size: 12 } }, gridcolor: C.grid, zeroline: mode === 'changes', zerolinecolor: C.axis, tickfont: { color: C.muted } },
+      yaxis: { title: { text: `${Cc.short}${unitTxt} at t + ${lag} (%)`, font: { size: 12 } }, gridcolor: C.grid, zeroline: mode === 'changes', zerolinecolor: C.axis, tickfont: { color: C.muted } } }),
+    p => go(`drill/quarter/${Q[p.customdata[2]].date}`, origin));
+  document.querySelectorAll('tr.row-link[data-d]').forEach(tr => tr.onclick = () => go(`drill/quarter/${tr.dataset.d}`, origin));
+}
+
+// ============================================================ DRILL-THROUGH: one headline figure's lineage
+function drillMetric(id) {
+  const pk = Q[byDate[K.affirm_peak_date]], cp = Q[byDate[K.cc_peak_date]], lt = Q[LAST], ya = Q[LAST - 4];
+  const affirmChain = (q, measure) => [
+    ['Source document', `Affirm Holdings ${q.form} for the period ending ${q.filing_period}, filed ${q.filed}. Accession <a class="mono" href="${q.edgar_url}" target="_blank" rel="noopener">${q.accession}</a>.`],
+    ['Table read', `Aging analysis of loans by delinquency status. Basis: ${esc(D.basis_labels[q.basis])}.`],
+    ['Raw file', `data/raw/affirm/${q.accession}/ (regenerate with scripts/fetch_affirm_filings.py; SEC pulled ${M.sec_pulled})`],
+    ['Transform', 'scripts/parse_affirm_delinquency.py: (30–59 + 60–89 + 90–119 days past due) ÷ total. The script stops if the buckets do not sum to the total.'],
+    ['Processed row', `data/processed/affirm_quarterly.csv, quarter_end ${q.date}, delinquency_30plus_pct = ${q.affirm30}`],
+    ['Measure', measure]];
+  const fredChain = (q, measure) => [
+    ['Source series', `FRED DRCCLACBS, Delinquency Rate on Credit Card Loans, All Commercial Banks (Board of Governors). Observation ${q.fred_obs_date}.`],
+    ['Raw file', `data/raw/DRCCLACBS.csv from fred.stlouisfed.org/graph/fredgraph.csv?id=DRCCLACBS, pulled ${M.fred_pulled}`],
+    ['Transform', 'scripts/pull_fred.py: last observation in each quarter, dated to quarter end'],
+    ['Processed row', `data/processed/fred_quarterly.csv, quarter ${q.date}, cc_30plus_dpd_rate_pct = ${q.cc30}`],
+    ['Measure', measure]];
+  const corrChain = b => [
+    ['Inputs', `Affirm 30+ DPD and card 30+ DPD, ${Q[0].label}–${Q[LAST].label}, from the two processed files`],
+    ['Method', 'scripts/lead_lag.py: Pearson correlation of Affirm at t with cards at t + N for N = 0–10; quarters missing on either side dropped pairwise'],
+    ['Result', `r = ${b.r.toFixed(3)} at N = ${b.lag}, n = ${b.n} pairs; 95% CI ${rr(b.lo)} to ${rr(b.hi)} (Fisher z) if pairs were independent`],
+    ['Overlap adjustment', `scripts/build_dashboard_data.py: autocorrelation in both series leaves about ${b.n_eff} effective pairs (Pyper & Peterman 1998); adjusted 95% CI ${rr(b.lo_adj)} to ${rr(b.hi_adj)}`]];
+  const L = {
+    affirm_peak: { t: 'Highest Affirm 30+ DPD rate', v: `${pct(K.affirm_peak)} in ${K.affirm_peak_label}`, steps: affirmChain(pk, `MAX over all quarters = ${pct(K.affirm_peak)}`), cmd: 'python scripts/fetch_affirm_filings.py\npython scripts/parse_affirm_delinquency.py' },
+    cc_peak: { t: 'Highest card 30+ DPD rate', v: `${pct(K.cc_peak)} in ${K.cc_peak_label}`, steps: fredChain(cp, `MAX over ${Q[0].label}–${Q[LAST].label} = ${pct(K.cc_peak)}`), cmd: 'python scripts/pull_fred.py' },
+    lead: { t: 'Quarters between the two highs', v: qWord(K.lead_q), steps: [
+      ['Affirm high', `${K.affirm_peak_label} (${pct(K.affirm_peak)}), from ${srcLine(byDate[K.affirm_peak_date])}`],
+      ['Card high', `${K.cc_peak_label} (${pct(K.cc_peak)}), from FRED DRCCLACBS observation ${cp.fred_obs_date}`],
+      ['Measure', `(${cp.date.slice(0, 4)} − ${pk.date.slice(0, 4)}) × 4 + (${K.cc_peak_label[1]} − ${K.affirm_peak_label[1]}) = ${K.lead_q} quarters`]], cmd: 'python scripts/pull_fred.py\npython scripts/parse_affirm_delinquency.py' },
+    best_levels: { t: 'Highest lagged correlation, levels', v: `r = ${K.best_levels.r.toFixed(3)} at ${aQ(K.best_levels.lag)} lag`, steps: corrChain(K.best_levels), cmd: 'python scripts/lead_lag.py' },
+    best_changes: { t: 'Highest lagged correlation, quarter-over-quarter changes', v: `r = ${K.best_changes.r.toFixed(3)} at ${aQ(K.best_changes.lag)} lag`, steps: corrChain(K.best_changes), cmd: 'python scripts/lead_lag.py' },
+    signal: { t: `Year-over-year change, ${lt.label}`, v: pp(T.latest.yoy_pp), steps: [
+      ...affirmChain(lt, '').slice(0, 5),
+      ['Year-ago row', `${ya.label}: delinquency_30plus_pct = ${ya.affirm30}, from ${srcLine(LAST - 4)}`],
+      ['Measure', `${lt.affirm30} − ${ya.affirm30} = ${pp(T.latest.yoy_pp)}. Rule: ≥ ${T.trigger_pp.toFixed(2)} pp is a trigger, ≥ ${T.watch_pp.toFixed(2)} pp is watch, otherwise no trigger. Result: ${STATUS[T.latest.signal].text}.`]], cmd: 'python scripts/parse_affirm_delinquency.py' },
+  }[id];
+  if (!L) return go(origin);
+  APP().innerHTML = crumb('Figure', L.t) + `
+  <div class="page-intro"><h1>${L.t}: ${L.v}</h1><p>From the published source to the number on the page.</p></div>
+  <div class="grid">
+    <section class="panel s8"><div class="chain">${L.steps.map(([h, p]) => `<div class="step"><div><h3>${h}</h3><p>${p}</p></div></div>`).join('')}</div></section>
+    <section class="panel s4"><h2>Reproduce it</h2><p class="desc">From the repository root:</p><pre class="formula mono">${L.cmd}\npython scripts/build_dashboard_data.py</pre>
+      <p class="hint" style="margin-top:8px">Build ${M.built_at} · commit ${esc(M.commit)}</p></section>
+  </div>`;
+}
+
+// ============================================================ boot
+const fmtDate = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+$('#vintage').innerHTML = `<span>Data through ${M.latest_label} · pulled ${fmtDate(M.sec_pulled)}<br>Next data ${M.next_data[0].expected}</span>
+  <a class="btn export" href="#print?auto=1">Export PDF</a>`;
+$('#foot').innerHTML = [
+  '<b>Sources</b>Affirm Holdings 10-K and 10-Q filings (SEC EDGAR) · Federal Reserve Board series DRCCLACBS and CORCCACBS (via FRED)',
+  '<b>Data</b>Every page reads one file, dashboard/data.js, built by scripts/build_dashboard_data.py',
+  '<b>Team</b>Samruddhi Shrawne and Abhinav Sharaff · FINTECH 590.05, Duke University',
+  '<span class="keys"><b>Keys</b><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> switch pages · <kbd>←</kbd> <kbd>→</kbd> step through a drill-through · <kbd>Esc</kbd> go back</span>',
+].map(l => `<div>${l}</div>`).join('');
+render();
+</script>
+</body>
+</html>
