@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.pyc
+.venv/
 
 # Raw Affirm filings (regenerate via fetch_affirm_filings.py)
 data/raw/affirm/*/
@@ -9,3 +10,6 @@ data/raw/affirm/*/
 # System
 .DS_Store
 Thumbs.db
+
+# Personal reference docs (local context only, not pushed)
+references/

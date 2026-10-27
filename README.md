@@ -22,17 +22,35 @@ shows up in traditional metrics.
 - `scripts/` — Python scripts for every data pull, parse, and chart
 - `data/raw/` — Unmodified pulls from FRED and SEC EDGAR
 - `data/processed/` — Clean quarterly CSVs used by the dashboard
+- `dashboard/` — Interactive dashboard (executive, analyst and regulator pages with drill-through)
 - `outputs/` — Rendered chart
 - `docs/` — Position memo, technical memo (TBA)
 - `llm-log/` — LLM validation log (TBA)
 
 ## How to reproduce
-1. `pip install pandas requests matplotlib`
+1. Set up the environment (Python 3.11+):
+   ```
+   python3 -m venv .venv
+   source .venv/bin/activate      # Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
 2. `python scripts/pull_fred.py` (pulls FRED series, builds fred_quarterly.csv)
 3. `python scripts/fetch_affirm_filings.py` (pulls Affirm filings from SEC EDGAR)
 4. `python scripts/parse_affirm_delinquency.py` (parses delinquency tables, builds affirm_quarterly.csv)
 5. `python scripts/chart_lead_lag.py` (renders the headline chart)
 6. `python scripts/lead_lag.py` (prints the lag correlation table)
+7. `python scripts/build_dashboard_data.py` (builds dashboard/data.js, the one data model all dashboard pages read)
+8. Open `dashboard/index.html` in a browser. It runs offline; Plotly is saved in `dashboard/vendor/`.
+
+## Dashboard
+One data model, three pages (FINTECH 590 Lecture 3):
+- **Executive**: conclusion card, recommendation, one supporting chart. Click the card or any point to drill through.
+- **Analyst**: slicers for window, measure, levels vs. changes, and lag. Every measure recalculates live; includes the position ledger, measure definitions and row-level data.
+- **Regulator**: neutral descriptive titles, data vintage, a source register linking every quarter to its SEC filing, and a source chain for every headline figure.
+
+Correlation intervals are sized to the effective number of independent quarter pairs (Pyper & Peterman 1998), since both series are strongly autocorrelated. The position ledger also reports a phase-randomized null test across all 11 lags, prewhitened and year-over-year versions of the lag test, and a drop-one-quarter check.
+
+**Export PDF** (header button, or open `#print`) lays out all three pages on landscape letter sheets. Presenter keys: `1` `2` `3` switch pages, `←` `→` step through a drill-through, `Esc` goes back.
 
 ## Data sources
 - FRED (Federal Reserve Economic Data): DRCCLACBS, CORCCACBS, PSAVERT, REVOLSL, TOTALSL
