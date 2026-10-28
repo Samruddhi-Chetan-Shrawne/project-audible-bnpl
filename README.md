@@ -24,8 +24,8 @@ shows up in traditional metrics.
 - `data/processed/` — Clean quarterly CSVs used by the dashboard
 - `dashboard/` — Interactive dashboard (executive, analyst and regulator pages with drill-through)
 - `outputs/` — Rendered chart
-- `docs/` — Position memo, technical memo (TBA)
-- `llm-log/` — LLM validation log (TBA)
+- `docs/` — Position memo (`position_memo.md`) and technical memo (`technical_memo.md`)
+- `llm-log/` — LLM validation log (`validation_log.md`)
 
 ## How to reproduce
 1. Set up the environment (Python 3.11+):
