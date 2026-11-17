@@ -207,8 +207,8 @@
   </div>
   <nav class="tabs" id="tabs">
     <a href="#executive" data-page="executive">Executive <small>decide</small></a>
-    <a href="#analyst" data-page="analyst">Analyst <small>test the method</small></a>
-    <a href="#regulator" data-page="regulator">Regulator <small>trace the source</small></a>
+    <a href="#analyst" data-page="analyst">Risk <small>failure modes</small></a>
+    <a href="#regulator" data-page="regulator">Compliance <small>auditability</small></a>
   </nav>
 </header>
 <div class="wrap">
@@ -379,7 +379,7 @@ window.addEventListener('hashchange', render);
 
 // Print view: all three pages stacked, one per landscape sheet, at print width so charts fit.
 function printAll(_, params) {
-  const names = { executive: 'Executive view: decide', analyst: 'Analyst view: test the method', regulator: 'Regulator view: trace the source' };
+  const names = { executive: 'Executive view: decide', analyst: 'Risk view: failure modes', regulator: 'Compliance view: auditability' };
   APP().innerHTML = `<div class="print-banner"><span>Print view: all three pages, analyst slicers at their current settings.</span>
       <button class="btn primary" onclick="window.print()">Print or save as PDF</button><a class="btn" href="#executive">Back to dashboard</a></div>` +
     PAGES.map((p, i) => `<section class="print-page"><p class="kicker">${i + 1} of 3 · ${names[p]}</p><div id="pv-${p}"></div></section>`).join('');
@@ -403,7 +403,7 @@ document.addEventListener('keydown', e => {
 });
 
 function crumb(filterLabel, filterValue, extra = '') {
-  const back = { executive: 'Executive', analyst: 'Analyst', regulator: 'Regulator' }[origin];
+  const back = { executive: 'Executive', analyst: 'Risk', regulator: 'Compliance' }[origin];
   return `<div class="crumb">
     <button class="btn" onclick="go('${origin}')">← Back to ${back}</button>
     <span class="chip">Drill-through filter: ${filterLabel} = <b>${esc(filterValue)}</b><button title="Clear the filter and go back" aria-label="Clear the filter and go back" onclick="go('${origin}')">✕</button></span>
@@ -492,7 +492,7 @@ function analyst() {
   const optsOf = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${v.name}</option>`).join('');
   const count = v => D.ledger.filter(l => l.verdict === v).length, holds = count('Hold'), narrows = count('Narrow'), fails = count('Fail');
   APP().innerHTML = `
-  <div class="page-intro"><h1>Analyst view: test the lead yourself</h1>
+  <div class="page-intro"><h1>Risk view: failure modes</h1>
     <p>Filters recalculate everything live. Defaults: full history.</p></div>
   <div class="slicers">
     <label class="slicer"><span>Window start</span><select id="s-start">${opts(S.s)}</select></label>
@@ -657,7 +657,7 @@ function regulator() {
     { id: 'signal', fig: `Year-over-year change, ${T.latest.label}`, val: pp(T.latest.yoy_pp), how: 'Affirm 30+ DPD minus the same quarter a year earlier', src: srcLine(LAST) },
   ];
   APP().innerHTML = `
-  <div class="page-intro"><h1>Regulator view: reported data and its sources</h1>
+  <div class="page-intro"><h1>Compliance view: reported data and its sources</h1>
     <p>Values as filed, with the source behind each one. No conclusions drawn.</p></div>
   <div class="grid">
     <section class="panel s12"><div class="vint">
@@ -803,7 +803,7 @@ function drillLag(lagArg, P) {
       </table></div></section>
     ${origin === 'executive' ? `<section class="panel s12 trust"><p>The peaks are ${qWord(K.lead_q)} apart, and correlation is highest at a ${K.best_changes.lag}–${K.best_levels.lag} quarter lead: the two tests agree.
       Both rest on one credit cycle.</p>
-      <a class="btn primary" href="#analyst">Test other windows on the Analyst page →</a></section>` : ''}
+      <a class="btn primary" href="#analyst">Test other windows on the Risk page →</a></section>` : ''}
   </div>`;
   const unitTxt = mode === 'changes' ? ' change' : '';
   plot('dl', [{ x: st.pairs.map(p => p.a), y: st.pairs.map(p => p.c), mode: 'markers+text', type: 'scatter',
