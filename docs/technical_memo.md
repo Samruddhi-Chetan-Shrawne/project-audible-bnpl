@@ -111,8 +111,9 @@ We also computed the same correlation on quarter-over-quarter changes. Correlati
 | Trough timing | Troughs only 3 quarters apart (Q4 2020, Q3 2021) | Narrow |
 | 0.50-point BNPL trigger | Fired Q4 2021, 10 quarters early; 1 false alarm (Q2 2024) | Narrow |
 | Affirm post-2022 decline | Late balances rose $102M to $238M while the book grew 3.6x | Narrow |
+| Saving rate (FRED PSAVERT, inverted) as an alternative leading signal | Saving rate leads cards by 7 quarters, r = 0.92 in levels (n = 18), but only r = 0.47 in changes vs Affirm's 0.62 | Narrow |
 
-The direction and size of the lead survive every transformation. The checks marked Narrow limit how strongly the finding can be stated: the result sits at the edge of conventional significance once autocorrelation and multiple lags are accounted for, and the falling Affirm rate after 2022 partly reflects a growing denominator.
+The direction and size of the lead survive every transformation. The checks marked Narrow limit how strongly the finding can be stated: the result sits at the edge of conventional significance once autocorrelation and multiple lags are accounted for, and the falling Affirm rate after 2022 partly reflects a growing denominator. The saving-rate check is the most important of these for the position: a free macro series leads card delinquency at least as well in levels, so Affirm's role is confirming that household cash stress has reached loan books, not providing a signal nobody else has.
 
 ## Reproducibility
 

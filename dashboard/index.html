@@ -432,12 +432,13 @@ function executive() {
 
     <section class="panel s7">
       <p class="kicker">Now what</p>
-      <h2>Watch buy now, pay later as an early warning for card losses</h2>
+      <h2>The saving rate gives the first warning; Affirm confirms stress has reached loan books</h2>
       <ol class="recs">
-        <li><div><b>Track Affirm's late-payment rate next to card delinquency each quarter.</b>
-          <span>It's public in Affirm's filings, and it turned first last cycle.</span></div></li>
-        <li><div><b>Review card lending when Affirm's rate rises ${T.trigger_pp.toFixed(2)} points in a year.</b>
-          <span>First fired ${first.start_label}, ${qWord(first.quarters_before_card_peak)} early.${falseAl.length ? ` One false alarm (${falseAl.map(e => e.start_label).join(', ')}).` : ''}</span></div></li>
+        <li><div><b>Watch the personal saving rate for the first sign of household cash stress.</b>
+          <span>It led card delinquency by ${qWord(K.sav_levels.lag)} last cycle, and it's published monthly.</span></div></li>
+        <li><div><b>Review card lending when Affirm's late-payment rate rises ${T.trigger_pp.toFixed(2)} points in a year.</b>
+          <span>First fired ${first.start_label}, ${qWord(first.quarters_before_card_peak)} before the card peak. The saving rate was already back to its 2019 level by then
+            (${pct(K.sav_at_first_trigger, 1)} vs ${pct(K.sav_2019, 1)}) and fell to ${pct(K.sav_after_first_trigger, 1)} the next quarter.${falseAl.length ? ` One false alarm (${falseAl.map(e => e.start_label).join(', ')}).` : ''}</span></div></li>
         <li><div><b>Get a second cycle of data before relying on the ${K.lead_q}-quarter gap.</b>
           <span>Request late-payment data from Afterpay, Klarna and PayPal.</span></div></li>
       </ol>
@@ -447,6 +448,20 @@ function executive() {
       <h2 id="hero-title"></h2>
       <p class="desc">Share of balances 30+ days late. Shaded: quarters the trigger fired. <span class="hint">Click a point for that quarter.</span></p>
       <div id="hero" style="height:420px"></div>
+    </section>
+
+    <section class="panel s12">
+      <h2 id="sav-title"></h2>
+      <p class="desc">Personal saving rate, % of disposable income, quarterly average of monthly data. Lower means less cash cushion. Same timeline as above.</p>
+      <div id="sav" style="height:220px"></div>
+      <p class="kicker" style="margin-top:14px">Two signals, two jobs</p>
+      <ol class="recs" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+        <li><div><b>Saving rate: the first warning</b>
+          <span>Household cash flow, monthly. Led card delinquency by ${qWord(K.sav_levels.lag)} (r = ${K.sav_levels.r.toFixed(2)}, ${K.sav_levels.n} pairs).</span></div></li>
+        <li><div><b>Affirm: the confirmation</b>
+          <span>Actual missed loan payments, quarterly. Tracks card delinquency more closely quarter to quarter (r = ${K.best_changes.r.toFixed(2)} vs ${K.sav_changes.r.toFixed(2)}).</span></div></li>
+      </ol>
+      <p class="hint" style="margin:10px 0 0">Both come from the same single credit cycle.</p>
     </section>
 
     <section class="panel trust s12">
@@ -479,6 +494,21 @@ function executive() {
     lineTrace('Bank credit cards', 'cc30', C.cards, { text: Q.map(q => q.label), hovertemplate: hov('Credit cards') }),
     lineTrace('Affirm (buy now, pay later)', 'affirm30', C.affirm, { text: Q.map(q => q.label), hovertemplate: hov('Affirm') }),
   ], base({ hovermode: 'x unified', shapes, annotations: ann, xaxis: xAxis(), yaxis: yAxis('30+ days past due', ymax) }), toQuarter('executive'));
+
+  // Saving rate as its own small multiple: different units, so no second y-axis on the chart above.
+  const savGap = Math.round((Date.parse(K.affirm_peak_date) - Date.parse(K.sav_trough_date)) / (91.3 * 864e5));
+  $('#sav-title').textContent = `Saving rate hit its low of ${pct(K.sav_trough, 1)} in ${K.sav_trough_label}`
+    + (savGap > 0 ? `, ${qWord(savGap)} before Affirm's peak` : savGap === 0 ? ', the same quarter as Affirm\'s peak' : '');
+  const savMax = Math.ceil(Math.max(...Q.map(q => q.sav ?? 0)) / 5) * 5;
+  plot('sav', [lineTrace('Personal saving rate', 'sav', C.ink2, { text: Q.map(q => q.label), hovertemplate: 'Saving rate, %{text}: <b>%{y:.1f}%</b><extra></extra>',
+    showlegend: false, line: { color: C.ink2, width: 2 }, marker: { size: 6, color: C.ink2, line: { color: '#fff', width: 2 } } })],
+  base({ hovermode: 'x unified', margin: { l: 58, r: 18, t: 8, b: 32 }, xaxis: xAxis(), yaxis: yAxis('% of income', savMax),
+    shapes: [...shapes.filter(s => s.type === 'rect'),
+      { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: K.sav_2019, y1: K.sav_2019, line: { color: C.muted, width: 1, dash: 'dot' } }],
+    annotations: [
+      { xref: 'paper', x: 1, y: K.sav_2019, xanchor: 'right', yanchor: 'bottom', showarrow: false, text: `2019 average ${pct(K.sav_2019, 1)}`, font: { size: 11, color: C.muted } },
+      { x: K.sav_trough_date, y: K.sav_trough, xanchor: 'left', xshift: 8, yshift: -8, showarrow: false, text: `Low ${pct(K.sav_trough, 1)}`, font: { size: 12, color: C.ink } }] }),
+  toQuarter('executive'));
 
   const concl = $('#concl'), drill = () => go(`drill/lag/${K.lead_q}`, 'executive');
   concl.addEventListener('click', drill);
@@ -683,12 +713,12 @@ function regulator() {
     <section class="panel s12"><h2>Source register, one row per quarter</h2>
       <p class="desc">When a quarter appears in several filings, the latest one is used. <span class="hint">Click a row for detail.</span></p>
       <div class="tbl-wrap"><table class="register">
-        <tr><th>Quarter</th><th class="n">Affirm 30+</th><th class="n">Affirm 90+</th><th>Table basis</th><th>Form</th><th>Filed</th><th>Column used</th><th>Accession</th><th class="n">Card 30+</th><th class="n">Card ${ab('NCO')}</th><th>${ab('FRED')} date</th></tr>
+        <tr><th>Quarter</th><th class="n">Affirm 30+</th><th class="n">Affirm 90+</th><th>Table basis</th><th>Form</th><th>Filed</th><th>Column used</th><th>Accession</th><th class="n">Card 30+</th><th class="n">Card ${ab('NCO')}</th><th class="n">Saving rate</th><th>${ab('FRED')} date</th></tr>
         ${Q.map((q, i) => `<tr class="row-link" data-i="${i}"><td>${q.label}</td><td class="n">${pct(q.affirm30)}</td><td class="n">${pct(q.affirm90)}</td>
           <td class="mono">${q.basis || '—'}</td><td>${q.form || 'not reported'}</td><td>${q.filed || '—'}</td>
           <td>${q.filing_period ? (q.filing_period === q.date ? 'current period' : 'comparative, filing for ' + q.filing_period) : '—'}</td>
           <td class="mono">${q.edgar_url ? `<a href="${q.edgar_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${q.accession}</a>` : '—'}</td>
-          <td class="n">${pct(q.cc30)}</td><td class="n">${pct(q.nco)}</td><td>${q.fred_obs_date}</td></tr>`).join('')}
+          <td class="n">${pct(q.cc30)}</td><td class="n">${pct(q.nco)}</td><td class="n">${pct(q.sav, 1)}</td><td>${q.fred_obs_date}</td></tr>`).join('')}
       </table></div></section>
 
     <section class="panel s7"><h2>Source catalog</h2>
@@ -697,6 +727,7 @@ function regulator() {
         <tr><td>Affirm 30+ / 90+ ${ab('DPD')}</td><td>Affirm Holdings, Inc. (CIK 1820953), SEC EDGAR</td><td>Quarterly, % of balance</td><td>Aging-table buckets summed, divided by total</td><td class="mono">data/raw/affirm/&lt;accession&gt;/</td></tr>
         <tr><td>DRCCLACBS</td><td>Board of Governors, via FRED</td><td>Quarterly, %, seasonally adjusted</td><td>Quarter-end value</td><td class="mono">data/raw/DRCCLACBS.csv</td></tr>
         <tr><td>CORCCACBS</td><td>Board of Governors, via FRED</td><td>Quarterly, %, annualized, seasonally adjusted</td><td>Quarter-end value</td><td class="mono">data/raw/CORCCACBS.csv</td></tr>
+        <tr><td>PSAVERT</td><td>Bureau of Economic Analysis, via FRED</td><td>Monthly, % of disposable income, seasonally adjusted</td><td>Quarterly average</td><td class="mono">data/raw/PSAVERT.csv</td></tr>
       </table></div></section>
     <section class="panel s5"><h2>Known data limitations</h2>
       <ul class="plain">
@@ -751,6 +782,7 @@ function drillQuarter(date) {
     <div class="tile"><div class="l"><span class="swatch" style="background:var(--cards)"></span>Card 30+ DPD</div><div class="v">${pct(q.cc30)}</div>
       <div class="s">${prev ? `${pp(q.cc30 - prev.cc30)} vs ${prev.label}` : ''}</div></div>
     <div class="tile"><div class="l"><span class="swatch" style="background:var(--nco)"></span>Card net charge-offs</div><div class="v">${pct(q.nco)}</div><div class="s">annualized</div></div>
+    <div class="tile"><div class="l">Personal saving rate</div><div class="v">${pct(q.sav, 1)}</div><div class="s">${prev && prev.sav != null ? `${pp(q.sav - prev.sav)} vs ${prev.label}` : 'quarterly average'}</div></div>
     ${neutral ? '' : `<div class="tile"><div class="l">Cards ${qWord(K.lead_q)} later</div><div class="v">${later ? pct(later.cc30) : '—'}</div><div class="s">${later ? later.label : 'beyond the data'}</div></div>`}
   </div>
   <div class="grid" style="margin-top:16px">
@@ -765,7 +797,7 @@ function drillQuarter(date) {
         <dt>Table basis</dt><dd>${esc(D.basis_labels[q.basis] || q.basis)}</dd>
         <dt>Processed row</dt><dd class="mono">affirm_quarterly.csv · quarter_end ${q.date}</dd></dl>` : '<p class="desc">No 10-K or 10-Q reports this quarter end, so the dashboard leaves it blank.</p>'}
       <h3 style="font-size:14px;margin:14px 0 0">Credit cards</h3>
-      <dl class="src"><dt>Series</dt><dd>FRED DRCCLACBS (30+ DPD), CORCCACBS (charge-offs)</dd><dt>Observation</dt><dd>${q.fred_obs_date}, quarterly</dd>
+      <dl class="src"><dt>Series</dt><dd>FRED DRCCLACBS (30+ DPD), CORCCACBS (charge-offs), PSAVERT (saving rate, quarterly average)</dd><dt>Observation</dt><dd>${q.fred_obs_date}, quarterly</dd>
         <dt>Processed row</dt><dd class="mono">fred_quarterly.csv · quarter ${q.date}</dd><dt>Pulled</dt><dd>${M.fred_pulled}</dd></dl>
     </section>
   </div>`;
@@ -867,7 +899,7 @@ const fmtDate = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', 
 $('#vintage').innerHTML = `<span>Data through ${M.latest_label} · pulled ${fmtDate(M.sec_pulled)}<br>Next data ${M.next_data[0].expected}</span>
   <a class="btn export" href="#print?auto=1">Export PDF</a>`;
 $('#foot').innerHTML = [
-  '<b>Sources</b>Affirm Holdings 10-K and 10-Q filings (SEC EDGAR) · Federal Reserve Board series DRCCLACBS and CORCCACBS (via FRED)',
+  '<b>Sources</b>Affirm Holdings 10-K and 10-Q filings (SEC EDGAR) · Federal Reserve Board series DRCCLACBS and CORCCACBS and BEA personal saving rate PSAVERT (via FRED)',
   '<b>Data</b>Every page reads one file, dashboard/data.js, built by scripts/build_dashboard_data.py',
   '<b>Team</b>Samruddhi Shrawne and Abhinav Sharaff · FINTECH 590.05, Duke University',
   '<span class="keys"><b>Keys</b><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> switch pages · <kbd>←</kbd> <kbd>→</kbd> step through a drill-through · <kbd>Esc</kbd> go back</span>',
