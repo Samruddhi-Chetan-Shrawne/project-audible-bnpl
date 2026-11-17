@@ -19,6 +19,16 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 OFFLINE=0
 [[ "${1:-}" == "--offline" ]] && OFFLINE=1
 
+# Find a Python 3.11+ interpreter. Windows (Git Bash) usually has `python` or `py`, not `python3`.
+if [[ -z "${PYTHON:-}" ]]; then
+  for candidate in python3 python py; do
+    if command -v "$candidate" >/dev/null 2>&1 \
+       && "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+      PYTHON="$candidate"
+      break
+    fi
+  done
+fi
 PYTHON="${PYTHON:-python3}"
 if ! "$PYTHON" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
   echo "ERROR: Python 3.11+ is required (found: $("$PYTHON" --version 2>&1 || echo none))." >&2
