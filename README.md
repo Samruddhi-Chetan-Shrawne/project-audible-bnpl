@@ -11,15 +11,17 @@ Defense: October 28, 2026.
 Is BNPL masking consumer credit stress that traditional credit card data misses?
 
 ## Position
-BNPL delinquencies lead credit card delinquencies by about 7 quarters. Watching only
-credit card data gives a reader two years of false comfort before the same stress
-shows up in traditional metrics.
+The personal saving rate gives the first warning of consumer credit stress; Affirm's
+delinquency rate confirms that the stress has reached consumer loan books. In this
+sample, Affirm's delinquency peaked 7 quarters (21 months) before bank credit card
+delinquency. It is a pattern from one credit cycle, not a forecast.
 
 ## Headline evidence
 - Affirm 30+ DPD peaked at 3.83% in Q3 2022.
-- Credit card 30+ DPD (FRED DRCCLACBS, all commercial banks) peaked at 3.22% in Q2 2024.
-- Cross-correlation across the full series peaks at a lag of 7-8 quarters (r = 0.76 in levels, 0.62 in quarter-over-quarter changes).
-- Data covers one credit cycle (2020 Q2 to 2026 Q2, 24 quarters for Affirm).
+- Credit card 30+ DPD (FRED DRCCLACBS, all commercial banks) peaked at 3.22% in Q2 2024, 7 quarters (21 months) later.
+- r = 0.76 at an 8-quarter lead on 16 overlapping pairs (levels); r = 0.62 at a 7-quarter lead on 15 pairs (quarter-over-quarter changes). About 7 of those pairs are independent, so the strength is uncertain; the timing holds in every robustness check.
+- The personal saving rate (FRED PSAVERT, inverted) leads card delinquency too: r = 0.92 at a 7-quarter lead on 18 pairs in levels, but only 0.47 on changes, where Affirm is stronger.
+- Data covers one credit cycle: 24 observed Affirm quarters, Q2 2020 to Q2 2026 (Q3 2020 has no filing).
 
 ## Repo structure
 - `scripts/` — Python scripts for every data pull, parse, and chart
