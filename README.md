@@ -31,7 +31,7 @@ shows up in traditional metrics.
 - `llm-log/` — LLM validation log (`validation_log.md`)
 
 ## How to reproduce
-1. Set up the environment (Python 3.11+):
+1. Set up the environment (Python 3.12+):
    ```
    python3 -m venv .venv
    source .venv/bin/activate      # Windows: .venv\Scripts\activate

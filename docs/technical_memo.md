@@ -118,7 +118,7 @@ The direction and size of the lead survive every transformation. The checks mark
 
 ### Environment
 
-- Python 3.11 or later (tested on 3.12)
+- Python 3.12 or later (the pinned numpy 2.5 requires 3.12)
 - Packages pinned in `requirements.txt`: pandas, numpy, requests, matplotlib
 - Install: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 
