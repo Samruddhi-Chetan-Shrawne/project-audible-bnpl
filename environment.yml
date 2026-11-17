@@ -2,8 +2,7 @@ name: project-audible-bnpl
 channels:
   - conda-forge
 dependencies:
-  # README says the pipeline was tested on Python 3.12; the pinned numpy/pandas
-  # in requirements.txt may not support 3.11.
+  # The pinned numpy 2.5 in requirements.txt requires Python 3.12+.
   - python=3.12
   - pip
   - pip:
