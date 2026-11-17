@@ -1,6 +1,8 @@
 # Project Audible: BNPL vs Credit Card Credit Stress
 **Live dashboard:** https://samruddhi-chetan-shrawne.github.io/project-audible-bnpl/dashboard/
 
+**Quick start:** `./run_demo.sh` (or `./run_demo.sh --offline` if SEC/FRED are unreachable)
+
 FINTECH 590.05 Phase 4. Duke M.Eng. Fintech, Fall 2026.
 Team: Samruddhi Shrawne (data pipeline, analysis) and Abhinav Sharaff (dashboard, memos).
 Defense: October 28, 2026.
