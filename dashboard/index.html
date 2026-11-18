@@ -220,11 +220,15 @@
 // ============================================================ data model
 const D = window.DASH, K = D.kpi, T = D.trigger, M = D.meta, Q = D.quarters;
 const N = Q.length, LAST = N - 1;
+// Saving rate enters the lag tests sign-flipped, so higher means more stress, like delinquency.
+Q.forEach(q => { q.sav_inv = q.sav == null ? null : -q.sav; });
 const byDate = Object.fromEntries(Q.map((q, i) => [q.date, i]));
 const AFFIRM = {
   affirm30: { name: 'Affirm 30+ DPD rate', short: 'Affirm 30+ DPD', unit: '%', field: 'affirm_quarterly.csv · delinquency_30plus_pct' },
   affirm90: { name: 'Affirm 90+ DPD rate', short: 'Affirm 90+ DPD', unit: '%', field: 'affirm_quarterly.csv · delinquency_90plus_pct' },
   del_usd_mil: { name: 'Affirm 30+ DPD balances ($M)', short: 'Affirm 30+ DPD $', unit: '$M', field: '30+ DPD rate × loans_held_for_investment_mil' },
+  sav_inv: { name: 'Personal saving rate (inverted)', short: 'Saving rate', unit: '%', field: 'FRED PSAVERT, quarterly average, sign flipped for r',
+    color: 'ink2', plotKey: 'sav', flip: true },
 };
 const CARD = {
   cc30: { name: 'Card 30+ DPD rate', short: 'Card 30+ DPD', unit: '%', field: 'FRED DRCCLACBS', color: 'cards' },
@@ -417,9 +421,10 @@ function executive() {
   <div class="grid">
     <section class="panel conclusion s5" tabindex="0" role="link" aria-label="Drill through to the lead-lag evidence" id="concl">
       <p class="kicker">Conclusion</p>
-      <h2>Buy now, pay later stress showed up ${qWord(K.lead_q)} before it reached credit cards</h2>
-      <div class="big">${K.lead_q} <small>quarters earlier</small></div>
+      <h2>The saving rate turned first, Affirm's late payments confirmed it, and card delinquency peaked ${qWord(K.lead_q)} after Affirm</h2>
+      <div class="big">${K.lead_q} <small>quarters before cards</small></div>
       <div class="peaks">
+        <span><span class="swatch" style="background:var(--ink-2)"></span>Saving rate low <b>${pct(K.sav_trough, 1)}</b> in ${K.sav_trough_label}</span>
         <span><span class="swatch" style="background:var(--affirm)"></span>Affirm peak <b>${pct(K.affirm_peak)}</b> in ${K.affirm_peak_label}</span>
         <span><span class="swatch" style="background:var(--cards)"></span>Card peak <b>${pct(K.cc_peak)}</b> in ${K.cc_peak_label}</span>
       </div>
@@ -461,12 +466,14 @@ function executive() {
         <li><div><b>Affirm: the confirmation</b>
           <span>Actual missed loan payments, quarterly. Tracks card delinquency more closely quarter to quarter (r = ${K.best_changes.r.toFixed(2)} vs ${K.sav_changes.r.toFixed(2)}).</span></div></li>
       </ol>
-      <p class="hint" style="margin:10px 0 0">Both come from the same single credit cycle.</p>
+      <p class="hint" style="margin:10px 0 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap">Both come from the same single credit cycle.
+        <a class="btn" href="#analyst" onclick="ANALYST.a = 'sav_inv'">Test the saving rate on the Risk page →</a></p>
     </section>
 
     <section class="panel trust s12">
-      <p><b>How sure are we?</b> The timing is solid: every test puts the gap at ${K.lead_range[0]}–${K.lead_range[1]} quarters.
-        The strength of the link is less certain, because the data covers one credit cycle. Treat it as a pattern, not a forecast.</p>
+      <p><b>How sure are we?</b> The timing is solid: every test puts the gap at ${K.lead_range[0]}–${K.lead_range[1]} quarters, and the saving rate shows the same lead.
+        Which signal is stronger is less certain: the saving rate wins on levels (r = ${K.sav_levels.r.toFixed(2)} vs ${K.best_levels.r.toFixed(2)}), Affirm on quarter-to-quarter changes (${K.best_changes.r.toFixed(2)} vs ${K.sav_changes.r.toFixed(2)}).
+        It's one credit cycle: a pattern, not a forecast.</p>
       <span style="display:flex;gap:8px;flex-wrap:wrap">
         <a class="btn" href="#analyst">See the evidence →</a>
         <a class="btn" href="#regulator">Trace every source →</a>
@@ -527,10 +534,10 @@ function analyst() {
   <div class="slicers">
     <label class="slicer"><span>Window start</span><select id="s-start">${opts(S.s)}</select></label>
     <label class="slicer"><span>Window end</span><select id="s-end">${opts(S.e)}</select></label>
-    <label class="slicer"><span>${ab('BNPL')} measure</span><select id="s-a">${optsOf(AFFIRM, S.a)}</select></label>
+    <label class="slicer"><span>Leading series</span><select id="s-a">${optsOf(AFFIRM, S.a)}</select></label>
     <label class="slicer"><span>Card measure</span><select id="s-c">${optsOf(CARD, S.c)}</select></label>
     <div class="slicer"><span>Compare</span>${seg('s-mode', [['levels', 'Levels'], ['changes', 'Quarterly changes']], S.mode)}</div>
-    <label class="slicer"><span>Shift ${ab('BNPL')} forward</span><input type="range" id="s-lag" min="0" max="10" value="${S.lag}"></label>
+    <label class="slicer"><span>Shift leading series forward</span><input type="range" id="s-lag" min="0" max="10" value="${S.lag}"></label>
     <div class="slicer"><span>At this shift</span><span class="readout" id="readout"></span></div>
     <button class="btn" id="s-reset" style="margin-left:auto">Reset to full history</button>
   </div>
@@ -565,6 +572,7 @@ function analyst() {
 <b>Affirm_90DPD</b>   = Days_90_119 / Total_AmortizedCost
 <b>Affirm_30DPD_$</b> = Affirm_30DPD × Loans_HeldForInvestment
 <b>Card_30DPD</b>     = FRED DRCCLACBS, quarter-end observation
+<b>Saving_inv</b>     = −PSAVERT, quarterly average (flipped so higher = more stress)
 <b>Lead_Quarters</b>  = QUARTERS( ARGMAX(Card_30DPD) − ARGMAX(Affirm_30DPD) )
 <b>r(N)</b>           = PEARSON( Affirm[t], Card[t+N] ), pairwise
 <b>n_eff</b>          = n / ( 1 + 2 · SUM[j ≤ n/5] ACF_A(j) · ACF_C(j) )
@@ -621,17 +629,17 @@ function drawAnalyst(first) {
   $('#readout').textContent = cur.r == null ? `${qWord(S.lag)} · too few pairs` : `${qWord(S.lag)} · r = ${rr(cur.r)} (n = ${cur.n}, ≈${Math.round(cur.ne)} effective)`;
 
   // Shift chart: one axis when units match, stacked panels when they don't. Never a dual axis.
-  const same = A.unit === Cc.unit;
+  const same = A.unit === Cc.unit && !A.flip, aKey = A.plotKey || S.a, aColor = C[(A.color || 'affirm').replace('-', '')];
   $('#t-shift').textContent = cur.r == null ? `Shifted ${qWord(S.lag)}, too few overlapping quarters in ${win} to compare`
     : `Shifted ${qWord(S.lag)} later, ${A.short} tracks ${Cc.short} at r = ${rr(cur.r)}`;
   $('#d-shift').textContent = `${win} · ${cur.n} pairs${ci(cur)}${S.mode === 'levels' ? '' : ' · r uses quarterly changes; the chart shows levels'}` +
-    (same ? '.' : ' · separate panels because units differ.');
+    (same ? '.' : A.flip ? ' · saving rate on its own panel, axis flipped so a lower rate plots higher.' : ' · separate panels because units differ.');
   const inWin = i => i >= S.s && i <= S.e;
   const valFmt = A.unit === '%' ? '%{y:.2f}%' : '$%{y:.0f}M';
-  const aT = { name: `${A.short}${S.lag ? `, shifted ${S.lag}Q later` : ''}`, x: Q.map(q => addQ(q.date, S.lag)), y: Q.map((q, i) => inWin(i) ? q[S.a] : null),
-    mode: 'lines+markers', connectgaps: false, line: { color: C.affirm, width: 2.5 }, marker: { size: 7, color: C.affirm, line: { color: '#fff', width: 2 } },
+  const aT = { name: `${A.short}${S.lag ? `, shifted ${S.lag}Q later` : ''}`, x: Q.map(q => addQ(q.date, S.lag)), y: Q.map((q, i) => inWin(i) ? q[aKey] : null),
+    mode: 'lines+markers', connectgaps: false, line: { color: aColor, width: 2.5 }, marker: { size: 7, color: aColor, line: { color: '#fff', width: 2 } },
     customdata: Q.map((q, i) => i), text: Q.map(q => `${q.label}${q.form ? ` · ${q.form} ${q.accession}` : ''}`),
-    hovertemplate: `${A.short}, %{text}: <b>${valFmt}</b><br><span style="color:#7a7974">${A.field} · pulled ${M.sec_pulled}</span><extra></extra>` };
+    hovertemplate: `${A.short}, %{text}: <b>${A.flip ? '%{y:.1f}%' : valFmt}</b><br><span style="color:#7a7974">${A.field} · pulled ${A.flip ? M.fred_pulled : M.sec_pulled}</span><extra></extra>` };
   const cColor = C[Cc.color];
   const cT = { name: Cc.short, x: Q.map(q => q.date), y: Q.map((q, i) => inWin(i) ? q[S.c] : null), mode: 'lines+markers',
     line: { color: cColor, width: 2.5 }, marker: { size: 7, color: cColor, line: { color: '#fff', width: 2 } },
@@ -640,7 +648,8 @@ function drawAnalyst(first) {
   const lay = base({ hovermode: 'x unified', xaxis: xAxis({ range: [addQ(Q[S.s].date, -1), addQ(Q[S.e].date, Math.max(1, S.lag + 1))], anchor: same ? 'y' : 'y2' }) });
   if (same) lay.yaxis = yAxis('% of balances', yMax([S.a, S.c]));
   else {
-    lay.yaxis = { ...yAxis(A.short, yMax([S.a]), A.unit), domain: [0.56, 1] };
+    lay.yaxis = A.flip ? { ...yAxis(`${A.short} (axis flipped)`, yMax([aKey])), range: [yMax([aKey]), 0], domain: [0.56, 1] }
+      : { ...yAxis(A.short, yMax([S.a]), A.unit), domain: [0.56, 1] };
     lay.yaxis2 = { ...yAxis(Cc.short, yMax([S.c]), Cc.unit), domain: [0, 0.42] };
   }
   if (first) plot('c-shift', [cT, aT], lay, p => go(`drill/quarter/${Q[p.customdata].date}`, 'analyst'));
@@ -654,12 +663,12 @@ function drawAnalyst(first) {
     error_y: { type: 'data', symmetric: false, array: rows.map(r => r.hiA != null ? r.hiA - r.r : 0),
       arrayminus: rows.map(r => r.loA != null ? r.r - r.loA : 0), color: C.ink2, thickness: 1.2, width: 4 },
     customdata: rows.map(r => [r.n, r.ne == null ? NaN : r.ne, r.loA ?? NaN, r.hiA ?? NaN, r.lo ?? NaN, r.hi ?? NaN]),
-    hovertemplate: 'Affirm leads by %{x}Q<br>r = <b>%{y:+.2f}</b> (n = %{customdata[0]}, ≈%{customdata[1]:.0f} effective)' +
-      '<br>Adjusted 95% CI %{customdata[2]:+.2f} to %{customdata[3]:+.2f}<br><span style="color:#7a7974">If pairs were independent: %{customdata[4]:+.2f} to %{customdata[5]:+.2f}</span><extra></extra>' }];
+    hovertemplate: `${A.short} leads by %{x}Q<br>r = <b>%{y:+.2f}</b> (n = %{customdata[0]}, ≈%{customdata[1]:.0f} effective)` +
+      `<br>Adjusted 95% CI %{customdata[2]:+.2f} to %{customdata[3]:+.2f}<br><span style="color:#7a7974">If pairs were independent: %{customdata[4]:+.2f} to %{customdata[5]:+.2f}</span><extra></extra>` }];
   const corrLay = base({ showlegend: false, bargap: 0.28, margin: { l: 48, r: 10, t: 10, b: 44 },
     annotations: rows.map(r => ({ x: r.lag, y: -1, yanchor: 'bottom', yshift: 2, showarrow: false,
       text: `${r.n}<br>≈${r.ne == null ? '–' : Math.round(r.ne)}`, font: { size: 10, color: C.muted } })),
-    xaxis: { title: { text: 'Affirm leads cards by (quarters)', font: { size: 12 } }, dtick: 1, tickfont: { color: C.muted }, linecolor: C.axis },
+    xaxis: { title: { text: `${A.short} leads cards by (quarters)`, font: { size: 12 } }, dtick: 1, tickfont: { color: C.muted }, linecolor: C.axis },
     yaxis: { title: { text: 'Correlation (r)', font: { size: 12 } }, range: [-1, 1], dtick: 0.5, gridcolor: C.grid, zeroline: true, zerolinecolor: C.ink2, tickfont: { color: C.muted } } });
   if (first) plot('c-corr', bars, corrLay, p => go(`drill/lag/${p.x}?mode=${S.mode}&a=${S.a}&c=${S.c}&s=${S.s}&e=${S.e}`, 'analyst'));
   else Plotly.react('c-corr', bars, corrLay, cfg);
@@ -818,7 +827,7 @@ function drillLag(lagArg, P) {
   const s = P.s != null ? +P.s : 0, e = P.e != null ? +P.e : LAST, st = lagStat(a, c, lag, mode, s, e);
   const A = AFFIRM[a], Cc = CARD[c], keep = `mode=${mode}&a=${a}&c=${c}&s=${s}&e=${e}`;
   const nav = l => `go('drill/lag/${l}?${keep}','${origin}')`;
-  APP().innerHTML = crumb('Affirm lead', qWord(lag), `<span class="nav-pn">
+  APP().innerHTML = crumb(`${A.short} lead`, qWord(lag), `<span class="nav-pn">
       <button class="btn" ${lag === 0 ? 'disabled' : ''} onclick="${nav(Math.max(0, lag - 1))}">← ${Math.max(0, lag - 1)}Q</button>
       <button class="btn" ${lag === 10 ? 'disabled' : ''} onclick="${nav(Math.min(10, lag + 1))}">${Math.min(10, lag + 1)}Q →</button></span>`) + `
   <div class="page-intro"><h1>${st.r == null ? 'Too few quarter pairs at this lead' : `At ${aQ(lag)} lead, r = ${rr(st.r)}`}</h1>
@@ -830,7 +839,7 @@ function drillLag(lagArg, P) {
       <div id="dl" style="height:400px"></div></section>
     <section class="panel s5"><h2>The ${st.n} pairs behind the number</h2>
       <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table>
-        <tr><th>Affirm quarter</th><th class="n">${A.short}</th><th>Card quarter</th><th class="n">${Cc.short}</th></tr>
+        <tr><th>${A.short} quarter</th><th class="n">${A.short}${A.flip ? ' (inverted)' : ''}</th><th>Card quarter</th><th class="n">${Cc.short}</th></tr>
         ${st.pairs.map(p => `<tr class="row-link" data-d="${Q[p.i].date}"><td>${Q[p.i].label}</td><td class="n">${p.a.toFixed(2)}</td><td>${Q[p.j].label}</td><td class="n">${p.c.toFixed(2)}</td></tr>`).join('')}
       </table></div></section>
     ${origin === 'executive' ? `<section class="panel s12 trust"><p>The peaks are ${qWord(K.lead_q)} apart, and correlation is highest at a ${K.best_changes.lag}–${K.best_levels.lag} quarter lead: the two tests agree.
