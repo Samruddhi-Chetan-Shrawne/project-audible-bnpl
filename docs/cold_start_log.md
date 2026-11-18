@@ -29,7 +29,7 @@ Same machine, fresh clone of main at `99ac0d9`. Exit code 1 after 74 seconds: `p
 
 ## Partner sign-off
 
-Reviewed by Samruddhi Shrawne: ______________________ Date: ____________
+Reviewed by Samruddhi Shrawne: Samruddhi Shrawne       Date: 2026-11-18
 
 ## Full output, run 2
 

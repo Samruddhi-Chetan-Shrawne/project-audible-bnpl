@@ -31,4 +31,4 @@ Pre-filled by Abhinav Sharaff (dashboard author). The lecture requires a peer au
 
 ## Peer sign-off
 
-Audited by Samruddhi Shrawne: ______________________ Date: ____________
+Audited by Samruddhi Shrawne: Samruddhi Shrawne       Date: 2026-11-18
