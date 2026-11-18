@@ -56,6 +56,8 @@
   .page-intro h1 { font-size: 24px; margin: 0; letter-spacing: -.01em; }
   .page-intro p { margin: 0; color: var(--ink-2); font-size: 14px; }
   .hint { color: var(--muted); font-size: 12px; }
+  .asof { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .asof::before { content: "· "; }
 
   /* Executive conclusion card */
   .conclusion { border-left: 5px solid var(--duke); cursor: pointer; transition: box-shadow .15s; }
@@ -257,6 +259,8 @@ const STATUS = {
   none: { icon: '●', text: 'No trigger' }, watch: { icon: '▲', text: 'Watch' },
   trigger: { icon: '■', text: 'Trigger' }, 'n/a': { icon: '–', text: 'No year-ago filing' },
 };
+// As-of stamp for chart subtitles (Lecture 12: units and as-of date on every visual).
+const asOf = () => `<span class="asof">Data through ${M.latest_label} · pulled ${new Date(M.sec_pulled + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}.</span>`;
 const statusChip = s => `<span class="status ${s === 'n/a' ? 'na' : s}"><i aria-hidden="true">${STATUS[s].icon}</i>${STATUS[s].text}</span>`;
 const verdict = v => `<span class="verdict ${v}"><i aria-hidden="true">${v === 'Hold' ? '●' : v === 'Narrow' ? '▲' : '■'}</i>${v}</span>`;
 const trig = `+${T.trigger_pp.toFixed(2)} pp`;
@@ -451,13 +455,13 @@ function executive() {
 
     <section class="panel s12">
       <h2 id="hero-title"></h2>
-      <p class="desc">Share of balances 30+ days late. Shaded: quarters the trigger fired. <span class="hint">Click a point for that quarter.</span></p>
+      <p class="desc">Share of balances 30+ days late. Shaded: quarters the trigger fired. ${asOf()} <span class="hint">Click a point for that quarter.</span></p>
       <div id="hero" style="height:420px"></div>
     </section>
 
     <section class="panel s12">
       <h2 id="sav-title"></h2>
-      <p class="desc">Personal saving rate, % of disposable income, quarterly average of monthly data. Lower means less cash cushion. Same timeline as above.</p>
+      <p class="desc">Personal saving rate, % of disposable income, quarterly average of monthly data. Lower means less cash cushion. Same timeline as above. ${asOf()}</p>
       <div id="sav" style="height:220px"></div>
       <p class="kicker" style="margin-top:14px">Two signals, two jobs</p>
       <ol class="recs" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
@@ -545,7 +549,7 @@ function analyst() {
     <section class="panel s12"><h2 id="t-shift"></h2>
       <p class="desc" id="d-shift"></p><div id="c-shift" style="height:380px"></div></section>
     <section class="panel s7"><h2 id="t-corr"></h2>
-      <p class="desc">Whiskers: 95% ${ab('CI')}, adjusted for overlapping quarters. Under each bar: pairs, then ≈ independent pairs.
+      <p class="desc">Whiskers: 95% ${ab('CI')}, adjusted for overlapping quarters. Under each bar: pairs, then ≈ independent pairs. ${asOf()}
         <span class="hint">Click a bar to see its pairs.</span></p>
       <div id="c-corr" style="height:330px"></div></section>
     <section class="panel s5"><h2>Peaks are ${qWord(K.lead_q)} apart; troughs only ${K.trough_gap_q}</h2>
@@ -564,7 +568,7 @@ function analyst() {
       </table></div></section>
 
     <section class="panel s6"><h2 id="t-den"></h2>
-      <p class="desc">The strongest objection, at full size. New loans haven't had time to go late, so fast growth pulls the rate down.</p>
+      <p class="desc">The strongest objection, at full size. New loans haven't had time to go late, so fast growth pulls the rate down. ${asOf()}</p>
       <div id="c-den" style="height:300px"></div></section>
     <section class="panel s6"><h2>Measure definitions</h2>
       <p class="desc">How every number is computed. Status colors come from the Signal rule.</p>
@@ -709,7 +713,7 @@ function regulator() {
     </div></section>
 
     <section class="panel s12"><h2>30+ day delinquency rate: Affirm Holdings and U.S. commercial bank credit cards, quarterly</h2>
-      <p class="desc">% of balances 30+ days past due. Reporting changes are marked. <span class="hint">Click a point for its source.</span></p>
+      <p class="desc">% of balances 30+ days past due. Reporting changes are marked. ${asOf()} <span class="hint">Click a point for its source.</span></p>
       <div id="reg" style="height:400px"></div></section>
 
     <section class="panel s12"><h2>Headline figures and how each is reproduced</h2>

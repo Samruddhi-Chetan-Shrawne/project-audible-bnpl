@@ -28,9 +28,9 @@ START, END = "2020-06-30", "2026-06-30"
 OUT_DIR = Path("outputs")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Categorical slots 1-2 of the dataviz reference palette (light mode).
-AFFIRM_COLOR = "#2a78d6"
-CC_COLOR     = "#eb6834"
+# Same colors as the dashboard (--affirm, --cards) so a series means one color everywhere.
+AFFIRM_COLOR = "#eb6834"
+CC_COLOR     = "#2a78d6"
 TEXT         = "#0b0b0b"
 TEXT_MUTED   = "#52514e"
 GRID         = "#e4e3df"
@@ -51,7 +51,7 @@ def peak(s: pd.Series) -> tuple[pd.Timestamp, float]:
 
 
 def quarter_label(ts: pd.Timestamp) -> str:
-    return f"{ts.year} Q{ts.quarter}"
+    return f"Q{ts.quarter} {ts.year}"
 
 
 def main():
@@ -90,7 +90,7 @@ def main():
     ax.text(a_q + (c_q - a_q) / 2, y + 0.06, f"{lag} quarters",
             ha="center", va="bottom", fontsize=9, color=TEXT_MUTED)
 
-    ax.set_title("BNPL delinquencies peaked 7 quarters (21 months) before credit card delinquencies",
+    ax.set_title("Affirm delinquency peaked 7 quarters (21 months) before bank credit card delinquency",
                  loc="left", fontsize=13, color=TEXT, pad=14)
     ax.set_xlabel("Quarter end", color=TEXT_MUTED, fontsize=9)
     ax.set_ylabel("30+ DPD rate (%)", color=TEXT_MUTED, fontsize=9)
@@ -109,7 +109,7 @@ def main():
 
     fig.text(0.01, 0.01,
              "Sources: Affirm 10-K/10-Q aging tables; FRED DRCCLACBS. "
-             "Affirm has no 2020 Q3 filing (pre-IPO).",
+             "Affirm has no Q3 2020 filing (pre-IPO). Data through Q2 2026; pulled Oct 26, 2026.",
              fontsize=7.5, color=TEXT_MUTED)
     fig.tight_layout(rect=(0, 0.03, 1, 1))
 
