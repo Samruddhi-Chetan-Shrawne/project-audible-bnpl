@@ -29,7 +29,7 @@ delinquency. It is a pattern from one credit cycle, not a forecast.
 - `data/processed/` — Clean quarterly CSVs used by the dashboard
 - `dashboard/` — Interactive dashboard (executive, analyst and regulator pages with drill-through)
 - `outputs/` — Rendered chart
-- `docs/` — Position memo (`position_memo.md`), technical memo (`technical_memo.md`) and cold-start log (`cold_start_log.md`)
+- `docs/` — Position memo (`position_memo.md`), technical memo (`technical_memo.md`), cold-start log (`cold_start_log.md`) and Tufte audit log (`tufte_audit_log.md`)
 - `llm-log/` — LLM validation log (`validation_log.md`)
 
 ## How to reproduce
