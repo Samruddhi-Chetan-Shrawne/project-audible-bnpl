@@ -28,8 +28,8 @@ Outputs:
 """
 
 from pathlib import Path
-import urllib.request
 import pandas as pd
+import requests
 
 SERIES = ["DRCCLACBS", "CORCCACBS", "PSAVERT", "REVOLSL", "TOTALSL"]
 START = "2019-01-01"
@@ -48,7 +48,11 @@ def pull(series_id: str) -> pd.DataFrame:
         f"?id={series_id}&cosd={START}&coed={END}"
     )
     out = RAW_DIR / f"{series_id}.csv"
-    urllib.request.urlretrieve(url, out)
+    # requests bundles its own CA certificates (certifi); urllib relies on the
+    # system store, which a fresh python.org install on macOS leaves empty.
+    r = requests.get(url, timeout=60)
+    r.raise_for_status()
+    out.write_bytes(r.content)
     df = pd.read_csv(out)
     df.columns = ["date", series_id]
     df["date"] = pd.to_datetime(df["date"])
