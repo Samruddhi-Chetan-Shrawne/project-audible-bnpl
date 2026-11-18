@@ -16,6 +16,8 @@ This log records every use of a large language model on this project, the prompt
 | 3 | Claude.ai (web) | Opus 4.7 | Oct 26, 2026 | Writing first drafts of the position memo and this validation log |
 | 4 | Claude Code | Opus 5.5 | Oct 27, 2026 | Building the three-audience dashboard, `build_dashboard_data.py`, and the robustness checks in the position ledger |
 | 5 | Claude Code (VS Code extension) | Opus 5.5 | Oct 28, 2026 | Moving the memos into the repo and updating them to reflect the dashboard and robustness results |
+| 6 | Claude Code (VS Code extension) | Opus 5.5 | Nov 3, 2026 | Class exercise: a 200-word LLM summary of our argument, critiqued for what it got right, wrong, and dangerously misleading |
+| 7 | Claude Code (VS Code extension) | Opus 5.5 | Nov 17, 2026 | Pressure-testing the position for external validity (saving-rate check), adding the saving rate to the dashboard, the cold-start run and the FRED download fix |
 
 No other LLMs or AI tools were used.
 
@@ -108,6 +110,34 @@ No other LLMs or AI tools were used.
 
 **Validation.** The model reran `lead_lag.py` and read the generated position ledger before editing, and every number it added traces to those outputs. It also fixed an inconsistency in the first draft, which said the trigger gives card teams "six to nine months", while the 7-quarter lead and the trigger test both imply more than a year.
 
+### Use 6: LLM summary exercise (Claude Code)
+
+**Context.** A class exercise asked us to have an LLM summarize our capstone argument in 200 words and critique the result.
+
+**Output summary.** The model's summary reproduced every headline number correctly. It said the cross-correlation "confirms" the lead, which our own robustness checks do not support (about 7 independent pairs, null test at 5.4%). Its closing line, that BNPL gives "roughly two years of advance notice", turned one lender in one cycle into a forecasting guarantee.
+
+**What we did with it.** The overclaim echoed our own memo's "two years of false comfort" wording. We dropped that phrase from every artifact and adopted fixed wording instead: "7 quarters (21 months)", "a pattern, not a forecast".
+
+### Use 7: External-validity pressure test, saving rate and cold start (Claude Code)
+
+**Context.** Marvin's feedback before the final: the analysis was internally consistent, but we needed to test it from the executive's seat. What would make an executive doubt the conclusion?
+
+**Task given to the model.** List the doubts an executive would raise, and test the ones our existing data can answer. Then add the result to the dashboard, run the cold-start test on a fresh clone, and fix what it found.
+
+**What the model found.** The inverted personal saving rate (FRED PSAVERT, already in our pull) leads card delinquency by 7 quarters with r = 0.92 in levels (n = 18), higher than Affirm's 0.76. On quarter-over-quarter changes Affirm is stronger (0.62 vs 0.47). Controlling for the saving rate, Affirm's partial correlation with cards is unstable across lags. It also found that the first trigger (Q4 2021) was public on Feb 14, 2022.
+
+**Validation.**
+- Samruddhi reproduced every saving-rate number independently before we changed the position.
+- The new ledger check is computed in `build_dashboard_data.py` from the same rows as every other figure. The dashboard rebuild left every existing figure unchanged.
+- The cold start was run from a fresh GitHub clone on a machine other than the script author's. Its first run failed (an SSL certificate error in `pull_fred.py`). After the fix the second run exited 0, and its outputs matched the committed dashboard exactly. See `docs/cold_start_log.md`.
+- The model checked our fact sheet against the data and caught one wrong claim. The +0.25 trigger sensitivity answer said it added warnings in 2023; the only extra firing is Q1 2025.
+
+**Human-owned decisions.**
+- Changing the position to "the saving rate gives the first warning; Affirm confirms stress has reached loan books": both team members, after Samruddhi's independent check. The model proposed a softer "watch both" version; we chose the sharper one.
+- Keeping the +0.50 point trigger on Affirm and not adding a saving-rate threshold the night before the defense: human.
+- Showing the saving rate as a separate chart on its own axis, not a second y-axis: human, on the model's recommendation.
+- Freezing the data at Q2 2026 even though the cold-start pull found Affirm's Q3 2026 filing: human.
+
 ## Clear statement of human ownership
 
 The following items are human-made or human-verified and not LLM-generated:
@@ -123,7 +153,7 @@ The following items are human-made or human-verified and not LLM-generated:
 The following items are LLM-generated and human-reviewed:
 
 - First drafts of memo prose.
-- Python code for data parsing, chart generation, correlation analysis, robustness checks, and the dashboard.
+- Python code for data parsing, chart generation, correlation analysis, robustness checks, the dashboard, and the FRED download fix.
 - Initial structure and section headings in all three memos.
 
 LLM-generated code was executed, outputs were cross-checked against raw filings for sample quarters, and bucket-sum assertions in the parser caught any arithmetic errors before they reached the dashboard or memos.
