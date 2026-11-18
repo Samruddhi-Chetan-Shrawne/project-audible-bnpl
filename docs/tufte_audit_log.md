@@ -18,7 +18,7 @@ Pre-filled by Abhinav Sharaff (dashboard author). The lecture requires a peer au
 | V-08 Peaks/troughs and trigger history tables | Risk | ✓ | ✓ | n/a | ✓ | ✓ | None |
 | V-09 Position ledger (14 checks) | Risk | ✓ | ✓ | n/a | ✓ | ✓ | None. Verdicts shown by icon and word, not color alone |
 | V-10 Reported 30+ DPD with reporting changes marked | Compliance | ✓ | ✓ | ✓ 1.0 | ✗ | ✓ | Added as-of stamp. Basis changes and Experian reporting date marked on the chart |
-| V-11 Headline figures and how each is reproduced | Compliance | ✓ | ✓ | n/a | ✓ | ✓ | None. Open item: rows do not cite fact-ledger IDs yet (see below) |
+| V-11 Headline figures and how each is reproduced | Compliance | ✓ | ✓ | n/a | ✓ | ✓ | Added a fact-ledger ID column (F-01 to F-20) and rows for the saving-rate and trigger figures, so every Executive-page number traces to a ledger row |
 | V-12 Source register, one row per quarter | Compliance | ✓ | ✓ | n/a | ✓ | ✓ | Added saving-rate column (PR #7) |
 | V-13 Quarter drill-through: context chart and tiles | Drill-through | ✓ | ✓ | ✓ 1.0 | ✓ | ✓ | None. Selected quarter marked with a line; quarter named in the title |
 | V-14 Lag drill-through: scatter of quarter pairs | Drill-through | ✓ | ✓ | n/a (position, no zero needed for a scatter) | ✓ | ✓ | None. Window and effective pairs in the subtitle |
@@ -26,7 +26,7 @@ Pre-filled by Abhinav Sharaff (dashboard author). The lecture requires a peer au
 
 ## Open items
 
-- **Ledger IDs in tooltips (Lecture 12, "turn on").** V-11 and the chart tooltips don't cite the fact-ledger IDs (F-01 and so on) yet. We'll add them once the fact sheet's IDs are final, so the dashboard and fact sheet can't disagree.
+- **Ledger IDs in tooltips (Lecture 12, "turn on"). Closed Nov 18.** V-11 now carries an ID column, each figure's drill-through names its ledger row, and hovering a labeled peak, trigger or saving-rate label on the Executive charts shows its ID.
 - **Panel cards.** Each visual sits on a white card with a 1 px border. This is page layout, not chart ink, so we kept it.
 
 ## Peer sign-off

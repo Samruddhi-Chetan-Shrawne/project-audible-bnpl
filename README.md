@@ -5,7 +5,7 @@
 
 FINTECH 590.05 Phase 4. Duke M.Eng. Fintech, Fall 2026.
 Team: Samruddhi Shrawne (data pipeline, analysis) and Abhinav Sharaff (dashboard, memos).
-Defense: October 28, 2026.
+Defense: November 18, 2026.
 
 ## Question
 Is BNPL masking consumer credit stress that traditional credit card data misses?

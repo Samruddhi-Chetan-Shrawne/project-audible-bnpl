@@ -248,6 +248,10 @@ const pts = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixe
 const rr = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const qWord = n => `${n} quarter${n === 1 ? '' : 's'}`;
+// Fact-ledger IDs (docs/fact_ledger.md), so every headline number traces to one ledger row.
+const FID = { affirm_peak: 'F-01', cc_peak: 'F-02', lead: 'F-03', best_levels: 'F-04', best_changes: 'F-05', trigger: 'F-09',
+  signal: 'F-10', sav_levels: 'F-15', sav_changes: 'F-16', sav_trigger: 'F-18', sav_latest: 'F-19', sav_trough: 'F-20' };
+const fidTip = id => `Fact ledger ${FID[id]}`;
 const aQ = n => `${n === 8 || n === 11 || n === 18 ? 'an' : 'a'} ${n}-quarter`;
 function addQ(iso, n) {
   const [y, m] = iso.split('-').map(Number);
@@ -494,11 +498,11 @@ function executive() {
     { type: 'line', x0: K.affirm_peak_date, x1: K.affirm_peak_date, y0: top - 0.1, y1: top + 0.1, line: { color: C.duke, width: 1.5 } },
     { type: 'line', x0: K.cc_peak_date, x1: K.cc_peak_date, y0: top - 0.1, y1: top + 0.1, line: { color: C.duke, width: 1.5 } });
   const ann = [
-    { x: addQ(K.affirm_peak_date, K.lead_q / 2), y: top, yshift: 11, showarrow: false, text: `<b>${qWord(K.lead_q)} apart</b>`, font: { size: 13, color: C.duke } },
-    { x: K.affirm_peak_date, y: K.affirm_peak, yshift: 22, showarrow: false, text: `Affirm peak ${pct(K.affirm_peak)}`, font: { size: 12, color: C.ink } },
-    { x: K.cc_peak_date, y: K.cc_peak, yshift: 22, showarrow: false, text: `Card peak ${pct(K.cc_peak)}`, font: { size: 12, color: C.ink } },
+    { x: addQ(K.affirm_peak_date, K.lead_q / 2), y: top, yshift: 11, showarrow: false, text: `<b>${qWord(K.lead_q)} apart</b>`, hovertext: fidTip('lead'), font: { size: 13, color: C.duke } },
+    { x: K.affirm_peak_date, y: K.affirm_peak, yshift: 22, showarrow: false, text: `Affirm peak ${pct(K.affirm_peak)}`, hovertext: fidTip('affirm_peak'), font: { size: 12, color: C.ink } },
+    { x: K.cc_peak_date, y: K.cc_peak, yshift: 22, showarrow: false, text: `Card peak ${pct(K.cc_peak)}`, hovertext: fidTip('cc_peak'), font: { size: 12, color: C.ink } },
     ...T.episodes.map(ep => ({ x: ep.start_date, y: 0.45, xanchor: 'center', showarrow: false,
-      text: ep.confirmed ? 'Trigger fired' : 'Trigger fired;<br>cards did not follow', font: { size: 11, color: C.critical } })),
+      text: ep.confirmed ? 'Trigger fired' : 'Trigger fired;<br>cards did not follow', hovertext: fidTip('trigger'), font: { size: 11, color: C.critical } })),
   ];
   const hov = who => `${who}, %{text}: <b>%{y:.2f}%</b><extra></extra>`;
   plot('hero', [
@@ -517,8 +521,8 @@ function executive() {
     shapes: [...shapes.filter(s => s.type === 'rect'),
       { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: K.sav_2019, y1: K.sav_2019, line: { color: C.muted, width: 1, dash: 'dot' } }],
     annotations: [
-      { xref: 'paper', x: 1, y: K.sav_2019, xanchor: 'right', yanchor: 'bottom', showarrow: false, text: `2019 average ${pct(K.sav_2019, 1)}`, font: { size: 11, color: C.muted } },
-      { x: K.sav_trough_date, y: K.sav_trough, xanchor: 'left', xshift: 8, yshift: -8, showarrow: false, text: `Low ${pct(K.sav_trough, 1)}`, font: { size: 12, color: C.ink } }] }),
+      { xref: 'paper', x: 1, y: K.sav_2019, xanchor: 'right', yanchor: 'bottom', showarrow: false, text: `2019 average ${pct(K.sav_2019, 1)}`, hovertext: fidTip('sav_trigger'), font: { size: 11, color: C.muted } },
+      { x: K.sav_trough_date, y: K.sav_trough, xanchor: 'left', xshift: 8, yshift: -8, showarrow: false, text: `Low ${pct(K.sav_trough, 1)}`, hovertext: fidTip('sav_trough'), font: { size: 12, color: C.ink } }] }),
   toQuarter('executive'));
 
   const concl = $('#concl'), drill = () => go(`drill/lag/${K.lead_q}`, 'executive');
@@ -691,14 +695,21 @@ function drawAnalyst(first) {
 const srcLine = i => { const q = Q[i]; return q.form ? `${q.form} filed ${q.filed}, accession <span class="mono">${q.accession}</span>` : 'not reported'; };
 function regulator() {
   const firstOrig = Q.findIndex(q => q.basis === 'hfi_by_origination'), upb = Q.findIndex(q => q.basis === 'hfi_hfs_upb');
+  const fq = T.first, fqi = byDate[fq.start_date];
   const figs = [
     { id: 'affirm_peak', fig: 'Highest Affirm 30+ DPD rate', val: `${pct(K.affirm_peak)} (${K.affirm_peak_label})`, how: `MAX of Affirm 30+ DPD, ${Q[0].label}–${Q[LAST].label}`, src: srcLine(byDate[K.affirm_peak_date]) },
     { id: 'cc_peak', fig: 'Highest card 30+ DPD rate', val: `${pct(K.cc_peak)} (${K.cc_peak_label})`, how: `MAX of DRCCLACBS, ${Q[0].label}–${Q[LAST].label}`, src: `FRED DRCCLACBS, observation ${Q[byDate[K.cc_peak_date]].fred_obs_date}` },
     { id: 'lead', fig: 'Quarters between the two highs', val: qWord(K.lead_q), how: 'Card high quarter minus Affirm high quarter', src: 'Derived from the two rows above' },
     { id: 'best_levels', fig: 'Highest lagged correlation, levels', val: `r = ${K.best_levels.r.toFixed(3)}, lag ${K.best_levels.lag}, n = ${K.best_levels.n} (≈${Math.round(K.best_levels.n_eff)} effective)`, how: 'Pearson, lags 0–10, pairwise deletion', src: 'scripts/lead_lag.py' },
     { id: 'best_changes', fig: 'Highest lagged correlation, changes', val: `r = ${K.best_changes.r.toFixed(3)}, lag ${K.best_changes.lag}, n = ${K.best_changes.n} (≈${Math.round(K.best_changes.n_eff)} effective)`, how: 'Same, on quarter-over-quarter differences', src: 'scripts/lead_lag.py' },
+    { id: 'trigger', fig: `First ${pts(T.trigger_pp)} year-over-year trigger`, val: `${fq.start_label} (filed ${Q[fqi].filed}), ${qWord(fq.quarters_before_card_peak)} before the card high; ${T.false_alarms} false alarm`, how: `First quarter with Affirm 30+ DPD ≥ ${T.trigger_pp.toFixed(2)} pp above the same quarter a year earlier`, src: srcLine(fqi) },
     { id: 'signal', fig: `Year-over-year change, ${T.latest.label}`, val: pp(T.latest.yoy_pp), how: 'Affirm 30+ DPD minus the same quarter a year earlier', src: srcLine(LAST) },
-  ];
+    { id: 'sav_levels', fig: 'Saving rate vs cards, levels', val: `r = ${K.sav_levels.r.toFixed(3)}, lag ${K.sav_levels.lag}, n = ${K.sav_levels.n}`, how: 'Pearson on the inverted saving rate, lags 0–10', src: 'scripts/build_dashboard_data.py' },
+    { id: 'sav_changes', fig: 'Saving rate vs cards, changes', val: `r = ${K.sav_changes.r.toFixed(3)}, lag ${K.sav_changes.lag}, n = ${K.sav_changes.n}`, how: 'Same, on quarter-over-quarter differences', src: 'scripts/build_dashboard_data.py' },
+    { id: 'sav_trigger', fig: `Saving rate around the ${fq.start_label} trigger`, val: `${pct(K.sav_at_first_trigger, 1)}, then ${pct(K.sav_after_first_trigger, 1)} (2019 average ${pct(K.sav_2019, 1)})`, how: 'Quarterly average of monthly PSAVERT', src: 'FRED PSAVERT' },
+    { id: 'sav_latest', fig: `Saving rate, ${Q[LAST].label}`, val: pct(Q[LAST].sav, 1), how: 'Quarterly average of monthly PSAVERT', src: 'FRED PSAVERT' },
+    { id: 'sav_trough', fig: 'Lowest saving rate', val: `${pct(K.sav_trough, 1)} (${K.sav_trough_label})`, how: `MIN of quarterly PSAVERT, ${Q[0].label}–${Q[LAST].label}`, src: 'FRED PSAVERT' },
+  ].map(f => ({ ...f, fid: FID[f.id] }));
   APP().innerHTML = `
   <div class="page-intro"><h1>Compliance view: reported data and its sources</h1>
     <p>Values as filed, with the source behind each one. No conclusions drawn.</p></div>
@@ -717,10 +728,10 @@ function regulator() {
       <div id="reg" style="height:400px"></div></section>
 
     <section class="panel s12"><h2>Headline figures and how each is reproduced</h2>
-      <p class="desc">Every figure on the executive page. <span class="hint">Click a row for its source chain.</span></p>
+      <p class="desc">Every figure on the executive page, with its ID in the fact ledger (docs/fact_ledger.md). <span class="hint">Click a row for its source chain.</span></p>
       <div class="tbl-wrap"><table>
-        <tr><th>Figure</th><th>Value</th><th>Computed as</th><th>Source</th></tr>
-        ${figs.map(f => `<tr class="row-link" data-m="${f.id}"><td>${f.fig}</td><td><b>${f.val}</b></td><td>${f.how}</td><td>${f.src}</td></tr>`).join('')}
+        <tr><th>Ledger</th><th>Figure</th><th>Value</th><th>Computed as</th><th>Source</th></tr>
+        ${figs.map(f => `<tr class="row-link" data-m="${f.id}"><td class="mono">${f.fid}</td><td>${f.fig}</td><td><b>${f.val}</b></td><td>${f.how}</td><td>${f.src}</td></tr>`).join('')}
       </table></div></section>
 
     <section class="panel s12"><h2>Source register, one row per quarter</h2>
@@ -883,6 +894,19 @@ function drillMetric(id) {
     ['Method', 'scripts/lead_lag.py: Pearson correlation of Affirm at t with cards at t + N for N = 0–10; quarters missing on either side dropped pairwise'],
     ['Result', `r = ${b.r.toFixed(3)} at N = ${b.lag}, n = ${b.n} pairs; 95% CI ${rr(b.lo)} to ${rr(b.hi)} (Fisher z) if pairs were independent`],
     ['Overlap adjustment', `scripts/build_dashboard_data.py: autocorrelation in both series leaves about ${b.n_eff} effective pairs (Pyper & Peterman 1998); adjusted 95% CI ${rr(b.lo_adj)} to ${rr(b.hi_adj)}`]];
+  const savChain = (q, measure) => [
+    ['Source series', 'FRED PSAVERT, Personal Saving Rate (U.S. Bureau of Economic Analysis), monthly, % of disposable income.'],
+    ['Raw file', `data/raw/PSAVERT.csv from fred.stlouisfed.org/graph/fredgraph.csv?id=PSAVERT, pulled ${M.fred_pulled}`],
+    ['Transform', 'scripts/pull_fred.py: average of the three monthly values in each quarter, dated to quarter end'],
+    ['Processed row', `data/processed/fred_quarterly.csv, quarter ${q.date}, personal_savings_rate_pct = ${q.sav}`],
+    ['Measure', measure]];
+  const savCorr = (b, what) => [
+    ['Inputs', `Personal saving rate (sign flipped, so a falling rate reads as rising stress) and card 30+ DPD, ${Q[0].label}–${Q[LAST].label}`],
+    ['Method', `scripts/build_dashboard_data.py: Pearson correlation on ${what}, saving rate at t with cards at t + N for N = 0–10`],
+    ['Result', `r = ${b.r.toFixed(3)} at N = ${b.lag}, n = ${b.n} pairs; 95% CI ${rr(b.lo)} to ${rr(b.hi)} (Fisher z) if pairs were independent`],
+    ['Overlap adjustment', `About ${b.n_eff} effective pairs (Pyper & Peterman 1998); adjusted 95% CI ${rr(b.lo_adj)} to ${rr(b.hi_adj)}`],
+    ['Compare', `Affirm vs cards: r = ${K.best_levels.r.toFixed(2)} (levels), ${K.best_changes.r.toFixed(2)} (changes). The saving rate is stronger in levels, Affirm in changes.`]];
+  const fq = T.first, fqi = byDate[fq.start_date], ft = Q[fqi], fy = Q[fqi - 4];
   const L = {
     affirm_peak: { t: 'Highest Affirm 30+ DPD rate', v: `${pct(K.affirm_peak)} in ${K.affirm_peak_label}`, steps: affirmChain(pk, `MAX over all quarters = ${pct(K.affirm_peak)}`), cmd: 'python scripts/fetch_affirm_filings.py\npython scripts/parse_affirm_delinquency.py' },
     cc_peak: { t: 'Highest card 30+ DPD rate', v: `${pct(K.cc_peak)} in ${K.cc_peak_label}`, steps: fredChain(cp, `MAX over ${Q[0].label}–${Q[LAST].label} = ${pct(K.cc_peak)}`), cmd: 'python scripts/pull_fred.py' },
@@ -896,10 +920,21 @@ function drillMetric(id) {
       ...affirmChain(lt, '').slice(0, 5),
       ['Year-ago row', `${ya.label}: delinquency_30plus_pct = ${ya.affirm30}, from ${srcLine(LAST - 4)}`],
       ['Measure', `${lt.affirm30} − ${ya.affirm30} = ${pp(T.latest.yoy_pp)}. Rule: ≥ ${T.trigger_pp.toFixed(2)} pp is a trigger, ≥ ${T.watch_pp.toFixed(2)} pp is watch, otherwise no trigger. Result: ${STATUS[T.latest.signal].text}.`]], cmd: 'python scripts/parse_affirm_delinquency.py' },
+    trigger: { t: `First ${pts(T.trigger_pp)} year-over-year trigger`, v: `${fq.start_label}, filed ${ft.filed}`, steps: [
+      ...affirmChain(ft, '').slice(0, 5),
+      ['Year-ago row', `${fy.label}: delinquency_30plus_pct = ${fy.affirm30}, from ${srcLine(fqi - 4)}`],
+      ['Measure', `${ft.affirm30} − ${fy.affirm30} = ${pp(ft.yoy_pp)}, the first quarter at or above ${T.trigger_pp.toFixed(2)} pp. It stayed on through ${fq.end_label}; cards rose ${pts(fq.card_rise_pp)} in the next ${qWord(fq.quarters_seen)} and peaked ${qWord(fq.quarters_before_card_peak)} after ${fq.start_label}.`],
+      ['False alarms', T.episodes.filter(e => !e.confirmed).map(e => `${e.start_label}: cards moved ${pts(e.card_rise_pp)} in the next ${qWord(e.quarters_seen)}`).join('; ') || 'None']], cmd: 'python scripts/parse_affirm_delinquency.py' },
+    sav_levels: { t: 'Saving rate vs cards, levels', v: `r = ${K.sav_levels.r.toFixed(3)} at ${aQ(K.sav_levels.lag)} lead`, steps: savCorr(K.sav_levels, 'levels'), cmd: 'python scripts/pull_fred.py' },
+    sav_changes: { t: 'Saving rate vs cards, quarter-over-quarter changes', v: `r = ${K.sav_changes.r.toFixed(3)} at ${aQ(K.sav_changes.lag)} lead`, steps: savCorr(K.sav_changes, 'quarter-over-quarter changes'), cmd: 'python scripts/pull_fred.py' },
+    sav_trigger: { t: `Saving rate around the ${fq.start_label} trigger`, v: `${pct(K.sav_at_first_trigger, 1)}, then ${pct(K.sav_after_first_trigger, 1)}`,
+      steps: savChain(ft, `${ft.label} = ${pct(ft.sav, 1)}; ${Q[fqi + 1].label} = ${pct(Q[fqi + 1].sav, 1)}. 2019 average of the four quarters = ${pct(K.sav_2019, 1)}`), cmd: 'python scripts/pull_fred.py' },
+    sav_trough: { t: 'Lowest saving rate', v: `${pct(K.sav_trough, 1)} in ${K.sav_trough_label}`, steps: savChain(Q[byDate[K.sav_trough_date]], `MIN over ${Q[0].label}–${Q[LAST].label} = ${pct(K.sav_trough, 1)}`), cmd: 'python scripts/pull_fred.py' },
+    sav_latest: { t: `Saving rate, ${lt.label}`, v: pct(lt.sav, 1), steps: savChain(lt, `${lt.label} = ${pct(lt.sav, 1)} vs 2019 average ${pct(K.sav_2019, 1)}. No saving-rate threshold is set: one cycle is not enough to pick one.`), cmd: 'python scripts/pull_fred.py' },
   }[id];
   if (!L) return go(origin);
   APP().innerHTML = crumb('Figure', L.t) + `
-  <div class="page-intro"><h1>${L.t}: ${L.v}</h1><p>From the published source to the number on the page.</p></div>
+  <div class="page-intro"><h1>${L.t}: ${L.v}</h1><p>Fact ledger ${FID[id]}. From the published source to the number on the page.</p></div>
   <div class="grid">
     <section class="panel s8"><div class="chain">${L.steps.map(([h, p]) => `<div class="step"><div><h3>${h}</h3><p>${p}</p></div></div>`).join('')}</div></section>
     <section class="panel s4"><h2>Reproduce it</h2><p class="desc">From the repository root:</p><pre class="formula mono">${L.cmd}\npython scripts/build_dashboard_data.py</pre>
