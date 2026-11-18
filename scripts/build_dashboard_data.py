@@ -153,6 +153,10 @@ def main():
     idx = df.index
     fred = pd.read_csv("data/processed/fred_quarterly.csv", parse_dates=["quarter"]).set_index("quarter")
     nco = fred["cc_nco_rate_pct"].reindex(idx)
+    # Personal saving rate: the macro signal that also leads cards. Inverted for
+    # the lag tests so that, like delinquency, a higher value means more stress.
+    sav = fred["personal_savings_rate_pct"].reindex(idx)
+    sav_2019 = fred["personal_savings_rate_pct"].loc["2019"].mean()
     afrm = pd.read_csv("data/processed/affirm_quarterly.csv", parse_dates=["quarter_end"]).set_index("quarter_end")
     afrm = afrm.reindex(idx)
     filings = pd.read_csv(next(p for p in INDEX_PATHS if p.exists())).set_index("accession")
@@ -180,6 +184,7 @@ def main():
             "del_usd_mil": num(del_usd.iloc[i], 1),
             "cc30": num(cc.iloc[i], 2),
             "nco": num(nco.iloc[i], 2),
+            "sav": num(sav.iloc[i], 2),
             "fred_obs_date": d.to_period("Q").start_time.strftime("%Y-%m-%d"),
             "basis": None if pd.isna(afrm["basis"].iloc[i]) else afrm["basis"].iloc[i],
             "accession": acc if isinstance(acc, str) else None,
@@ -225,6 +230,11 @@ def main():
         })
     first_ep = episodes[0] if episodes else None
     false_alarms = [e for e in episodes if not e["confirmed"]]
+
+    sav_lvl, sav_chg = best(lag_table(-sav, cc, False)), best(lag_table(-sav, cc, True))
+    s_trough = sav.idxmin()
+    sav_first = sav.iloc[first_ep["start"]] if first_ep else None
+    sav_next = sav.iloc[first_ep["start"] + 1] if first_ep else None
 
     # Robustness checks for the position ledger (Lecture 9). Each states what
     # would have weakened the claim, then what the data returned.
@@ -303,6 +313,12 @@ def main():
          "test": "Charge-offs don't follow Affirm",
          "result": lag_result("Charge-offs: ", r_nco),
          "verdict": "Hold" if r_nco["lag"] > 0 and r_nco["r"] >= 0.30 else "Fail"},
+        {"claim": "Affirm adds something the saving rate doesn't",
+         "test": "Saving rate beats Affirm on both levels and changes",
+         "result": (f"Saving rate: {sav_lvl['lag']} quarters, r = {sav_lvl['r']:.2f} (levels), "
+                    f"{sav_chg['r']:.2f} (changes). Affirm: {best_lvl['r']:.2f}, {best_chg['r']:.2f}"),
+         "verdict": ("Fail" if sav_lvl["r"] > best_lvl["r"] and sav_chg["r"] > best_chg["r"]
+                     else "Narrow" if sav_lvl["r"] > best_lvl["r"] or sav_chg["r"] > best_chg["r"] else "Hold")},
     ]
 
     latest = quarters[-1]
@@ -331,6 +347,10 @@ def main():
             "nco_peak": num(nco.max(), 2), "nco_peak_label": label(nco.idxmax()),
             "lead_range": lead_range, "perm_p": round(perm_p, 3), "n_sims": N_SIMS,
             "prewhitened": r_pw, "yoy": r_yoy,
+            "sav_levels": sav_lvl, "sav_changes": sav_chg, "sav_2019": num(sav_2019, 2),
+            "sav_trough": num(sav.min(), 2), "sav_trough_date": s_trough.strftime("%Y-%m-%d"),
+            "sav_trough_label": label(s_trough),
+            "sav_at_first_trigger": num(sav_first, 2), "sav_after_first_trigger": num(sav_next, 2),
         },
         "trigger": {
             "trigger_pp": TRIGGER_PP, "watch_pp": WATCH_PP,
